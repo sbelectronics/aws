@@ -130,6 +130,56 @@ led_delay5:	loop	led_delay5
 
 		; memtest will jump to the next instruction after the "include"
 
+display_init:   xor     al,al                         	; setup the CRT (from BIOS)
+                out     22h,al                        	; Command 0 = reset
+                mov     al,4Fh                        	; normal rows, 80 columns
+                out     20h,al
+                mov     al,1Ch                        	; 1 retrace row, 29 rows
+                out     20h,al
+                mov     al,7Ah                        	; underline placement 7, 10 lines per row
+                out     20h,al
+                mov     al,9h                         	; mode 0, transparent field, blinking reverse video cursor, horizontal retrace ??
+                out     20h,al  
+                mov     al,0Fh                        	
+                out     5h,al				; DMA: port 5h is current count and transfer direction of VD refresh DMA channel
+                mov     al,89h				; count is set to 0x90F. Direction is READ.
+                out     5h,al
+                mov     al,0Fh
+                out     7h,al			     	; DMA: port 7h is initial count and transfer direction of VD refresh DMA channel
+                mov     al,89h				; count is set to 0x90F. Direction is READ.
+                out     7h,al
+                mov     al,0h				
+                out     4h,al				; DMA: port 4h is current address for VD refresh DMA channel. Set to 0x0400
+                mov     al,4h
+                out     4h,al
+                mov     al,0h
+                out     6h,al				; DMA: port 6h is initial address for VD refresh DMA channel. Set to 0x0400
+                mov     al,4h
+                out     6h,al
+                mov     al,0C4h
+                out     8h,al				; DMA: port 8h is control for DMA. Start Channel 2. Stop DMA on count 0. Start auto-init mode.
+
+cursor_middle:  mov     al,80h
+                out     22h,al                          ; load cursor position. Let's pick something in the middle of the screen.
+                mov     al, 028h			; column 40
+                out     20h,al
+                mov     al, 0Eh                         ; row 14
+                out     20h,al
+
+display_start:  xor     ax,ax				; ES and DS to 0   (from BIOS)
+                mov     es,ax
+                mov     ds,ax
+                mov     di,400h                 	; fill display buffer with spaces?? 80x29 = 0x910
+                mov     cx,910h
+                mov     al,41h				; fill with "A"
+                cld     
+                rep     stosb   
+                mov     [0D10h],cl			; Initial cursor position. Used in BIOS load-cursor-position function.
+                mov     ax,0F3F3h
+                mov     [0D0Eh],ax			; No idea about this. 
+                mov     al,27h
+                out     22h,al                          ; start display
+
 okay:		mov dh, BEEP_OKAY
 		jmp beep_count
 
