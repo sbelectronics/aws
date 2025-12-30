@@ -8,6 +8,9 @@ BEEP_BANK1BAD	equ 3
 BEEP_BANK2BAD	equ 4
 BEEP_BANK3BAD	equ 5
 BEEP_BANK4BAD	equ 6
+BEEP_BANK5BAD	equ 7
+BEEP_BANK6BAD	equ 8
+BEEP_BANK7BAD	equ 9
 
 		org 0h					; start of 2732 EPROM
 
@@ -39,6 +42,12 @@ snd_delay2:	loop	snd_delay2
 
 		;------------------------------------------
 		; Memory Test
+		;
+		; Note: I call these "banks", but on the 8086 board there are 9 even and 9 odd chips, so
+		;          banks 0+1 = 18 ICs
+		;          banks 2+3 = 18 ICs
+		;	   banks 4+5 = 18 ICs
+		;	   banks 6+7 = 18 ICs
 		;------------------------------------------
 
 		; memory test bank 0
@@ -165,7 +174,7 @@ ver_Failed3:
 
 ver4:
 		mov	bx, 5678h			; starting pattern to write
-		mov	ax, 5000h
+		mov	ax, 4000h
 		mov	es, ax
 		mov	di, 0
 		mov	cx, 07FFFh			; Set CX to 65535 (loop counter)
@@ -175,7 +184,7 @@ write_loop4:	mov	es:[di], bx			; Write BX to ES:DI
 		loop	write_loop4			; Decrement CX and repeat until CX is 0
 
 		mov	bx, 5678h			; starting pattern to write
-		mov	ax, 5000h
+		mov	ax, 4000h
 		mov	es, ax
 		mov	di, 0
 		mov	cx, 07FFFh			; Set CX to 65535 (loop counter)
@@ -186,10 +195,102 @@ verify_loop4:
         	add     di, 2              ; Increment DI by 2 (AX is 2 bytes)
         	add     bx, MEM_INC        ; Increment BX to match the next expected value
         	loop    verify_loop4       ; Decrement CX and repeat until CX is 0
-		jmp 	verDone
+		jmp 	ver5
 ver_Failed4:
 		mov dh, BEEP_BANK4BAD
-		jmp ram_error						
+		jmp ram_error
+
+		; memory test bank 5
+
+ver5:
+		mov	bx, 6789h			; starting pattern to write
+		mov	ax, 5000h
+		mov	es, ax
+		mov	di, 0
+		mov	cx, 07FFFh			; Set CX to 65535 (loop counter)
+write_loop5:	mov	es:[di], bx			; Write BX to ES:DI
+		add	di, 2				; Increment DI by 2 (BX is 2 bytes)
+		add	bx, MEM_INC
+		loop	write_loop5			; Decrement CX and repeat until CX is 0
+
+		mov	bx, 6789h			; starting pattern to write
+		mov	ax, 5000h
+		mov	es, ax
+		mov	di, 0
+		mov	cx, 07FFFh			; Set CX to 65535 (loop counter)
+verify_loop5:
+        	mov     ax, es:[di]        ; Read the value at ES:DI
+        	cmp     ax, bx             ; Compare it with the expected value in BX
+        	jne     ver_failed5 	   ; If not equal, jump to failure handler
+        	add     di, 2              ; Increment DI by 2 (AX is 2 bytes)
+        	add     bx, MEM_INC        ; Increment BX to match the next expected value
+        	loop    verify_loop5       ; Decrement CX and repeat until CX is 0
+		jmp 	ver6
+ver_Failed5:
+		mov dh, BEEP_BANK5BAD
+		jmp ram_error
+
+		; memory test bank 6
+
+ver6:
+		mov	bx, 789Ah			; starting pattern to write
+		mov	ax, 6000h
+		mov	es, ax
+		mov	di, 0
+		mov	cx, 07FFFh			; Set CX to 65535 (loop counter)
+write_loop6:	mov	es:[di], bx			; Write BX to ES:DI
+		add	di, 2				; Increment DI by 2 (BX is 2 bytes)
+		add	bx, MEM_INC
+		loop	write_loop6			; Decrement CX and repeat until CX is 0
+
+		mov	bx, 789Ah			; starting pattern to write
+		mov	ax, 6000h
+		mov	es, ax
+		mov	di, 0
+		mov	cx, 07FFFh			; Set CX to 65535 (loop counter)
+verify_loop6:
+        	mov     ax, es:[di]        ; Read the value at ES:DI
+        	cmp     ax, bx             ; Compare it with the expected value in BX
+        	jne     ver_failed6 	   ; If not equal, jump to failure handler
+        	add     di, 2              ; Increment DI by 2 (AX is 2 bytes)
+        	add     bx, MEM_INC        ; Increment BX to match the next expected value
+        	loop    verify_loop6       ; Decrement CX and repeat until CX is 0
+		jmp 	ver7
+ver_Failed6:
+		mov dh, BEEP_BANK6BAD
+		jmp ram_error
+
+		; memory test bank 7
+
+ver7:
+		mov	bx, 89ABh			; starting pattern to write
+		mov	ax, 7000h
+		mov	es, ax
+		mov	di, 0
+		mov	cx, 07FFFh			; Set CX to 65535 (loop counter)
+write_loop7:	mov	es:[di], bx			; Write BX to ES:DI
+		add	di, 2				; Increment DI by 2 (BX is 2 bytes)
+		add	bx, MEM_INC
+		loop	write_loop7			; Decrement CX and repeat until CX is 0
+
+		mov	bx, 89ABh			; starting pattern to write
+		mov	ax, 7000h
+		mov	es, ax
+		mov	di, 0
+		mov	cx, 07FFFh			; Set CX to 65535 (loop counter)
+verify_loop7:
+        	mov     ax, es:[di]        ; Read the value at ES:DI
+        	cmp     ax, bx             ; Compare it with the expected value in BX
+        	jne     ver_failed7 	   ; If not equal, jump to failure handler
+        	add     di, 2              ; Increment DI by 2 (AX is 2 bytes)
+        	add     bx, MEM_INC        ; Increment BX to match the next expected value
+        	loop    verify_loop7       ; Decrement CX and repeat until CX is 0
+		jmp 	verDone
+ver_Failed7:
+		mov dh, BEEP_BANK6BAD
+		jmp ram_error				
+		
+							
 
 verDone:	mov dh, BEEP_OKAY
 		jmp beep_count
