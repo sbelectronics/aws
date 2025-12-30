@@ -1,0 +1,1812 @@
+ff000: fa                 cli                           ; called from ROM entrypoint
+ff001: e4 f4              in      al,0F4h               ; disable parity check
+ff003: 33 c0              xor     ax,ax
+ff005: 8c c3              mov     bx,es
+ff007: 81 e3 03 00        and     bx,3h
+ff00b: 74 04              je      0FF011h
+ff00d: 8a e3              mov     ah,bl
+ff00f: 8a c2              mov     al,dl
+ff011: 8e d0              mov     ss,ax
+ff013: 33 d2              xor     dx,dx
+ff015: b0 36              mov     al,36h                ; program speaker counter, write 36h to port 46h
+ff017: e6 46              out     46h,al
+ff019: bd 1f 00           mov     bp,1Fh
+ff01c: e9 d0 0d           jmp     0FFDEFh               ; does stuff with timer interrupt
+ff01f: bd 25 00           mov     bp,25h
+ff022: e9 ff 03           jmp     0FF424h
+ff025: bd 2b 00           mov     bp,2Bh
+ff028: e9 33 04           jmp     0FF45Eh
+ff02b: bd 31 00           mov     bp,31h
+ff02e: e9 82 04           jmp     0FF4B3h
+ff031: bc 37 00           mov     sp,37h
+ff034: e9 f1 04           jmp     0FF528h
+ff037: bd 3d 00           mov     bp,3Dh
+ff03a: e9 27 02           jmp     0FF264h
+ff03d: bd 43 00           mov     bp,43h
+ff040: e9 c4 04           jmp     0FF507h
+ff043: 8c d1              mov     cx,ss
+ff045: b8 00 18           mov     ax,1800h
+ff048: 8b e0              mov     sp,ax
+ff04a: 33 c0              xor     ax,ax
+ff04c: 8e d0              mov     ss,ax
+ff04e: 8e d8              mov     ds,ax
+ff050: 8e c0              mov     es,ax
+ff052: a3 50 0f           mov     [0F50h],ax
+ff055: 23 d2              and     dx,dx
+ff057: 74 05              je      0FF05Eh
+ff059: b2 e6              mov     dl,0E6h
+ff05b: e8 0c 0f           call    0FFF6Ah
+ff05e: 52                 push    dx
+ff05f: ba 00 ff           mov     dx,0FF00h
+ff062: 51                 push    cx
+ff063: 33 f6              xor     si,si
+ff065: b9 08 00           mov     cx,8h
+ff068: 33 c0              xor     ax,ax
+ff06a: 8e c0              mov     es,ax
+ff06c: 26 8b 1c           mov     bx,es:[si]
+ff06f: 26 88 14           mov     es:[si],dl
+ff072: 26 38 14           cmp     es:[si],dl
+ff075: 26 89 1c           mov     es:[si],bx
+ff078: 75 05              jne     0FF07Fh
+ff07a: 80 c4 10           add     ah,10h
+ff07d: e2 eb              loop    0FF06Ah
+ff07f: a3 5e 0f           mov     [0F5Eh],ax
+ff082: 59                 pop     cx
+ff083: 88 16 62 0f        mov     [0F62h],dl
+ff087: 88 16 63 0f        mov     [0F63h],dl
+ff08b: b8 00 bf           mov     ax,0BF00h
+ff08e: a3 6a 0f           mov     [0F6Ah],ax
+ff091: c7 06 68 0f 06 00  mov     word ptr [0F68h],6h
+ff097: a3 66 0f           mov     [0F66h],ax
+ff09a: c7 06 64 0f 00 00  mov     word ptr [0F64h],0h
+ff0a0: 8e c0              mov     es,ax
+ff0a2: 26 a1 f0 0f        mov     ax,es:[0FF0h]
+ff0a6: 3d 54 53           cmp     ax,5354h
+ff0a9: 75 04              jne     0FF0AFh
+ff0ab: 88 36 62 0f        mov     [0F62h],dh
+ff0af: 88 16 5b 0f        mov     [0F5Bh],dl
+ff0b3: 88 36 53 0f        mov     [0F53h],dh
+ff0b7: 88 36 5a 0f        mov     [0F5Ah],dh
+ff0bb: 88 16 5d 0f        mov     [0F5Dh],dl
+ff0bf: 88 16 61 0f        mov     [0F61h],dl
+ff0c3: f6 c5 01           test    ch,1h
+ff0c6: 74 0e              je      0FF0D6h
+ff0c8: 88 36 61 0f        mov     [0F61h],dh
+ff0cc: 88 0e 53 0f        mov     [0F53h],cl
+ff0d0: 88 36 5b 0f        mov     [0F5Bh],dh
+ff0d4: eb 15              jmp     0FF0EBh
+ff0d6: f6 c5 02           test    ch,2h
+ff0d9: 74 10              je      0FF0EBh
+ff0db: 88 36 61 0f        mov     [0F61h],dh
+ff0df: 88 0e 5c 0f        mov     [0F5Ch],cl
+ff0e3: 88 36 5d 0f        mov     [0F5Dh],dh
+ff0e7: 88 16 5a 0f        mov     [0F5Ah],dl
+ff0eb: 5a                 pop     dx
+ff0ec: e8 a2 03           call    0FF491h
+ff0ef: bf 00 0f           mov     di,0F00h
+ff0f2: b9 10 00           mov     cx,10h
+ff0f5: 33 c0              xor     ax,ax
+ff0f7: 8e c0              mov     es,ax
+ff0f9: fc                 cld     
+ff0fa: f3 aa              rep     stosb   
+ff0fc: e8 b1 0c           call    0FFDB0h
+ff0ff: f7 c2 00 01        test    dx,100h
+ff103: 75 03              jne     0FF108h
+ff105: e9 bc 00           jmp     0FF1C4h
+ff108: b8 ad 01           mov     ax,1ADh
+ff10b: e8 d5 01           call    0FF2E3h
+ff10e: b8 9e 01           mov     ax,19Eh
+ff111: e8 cf 01           call    0FF2E3h
+ff114: e8 92 01           call    0FF2A9h
+ff117: 3c 42              cmp     al,42h
+ff119: 75 03              jne     0FF11Eh
+ff11b: e9 dd 00           jmp     0FF1FBh
+ff11e: 3c 4c              cmp     al,4Ch
+ff120: 75 09              jne     0FF12Bh
+ff122: c7 06 50 0f ff ff  mov     word ptr [0F50h],0FFFFh
+ff128: e9 d0 00           jmp     0FF1FBh
+ff12b: 3c 43              cmp     al,43h
+ff12d: 75 05              jne     0FF134h
+ff12f: e8 c9 0c           call    0FFDFBh
+ff132: eb da              jmp     0FF10Eh
+ff134: 3c 44              cmp     al,44h
+ff136: 75 28              jne     0FF160h
+ff138: b8 c2 01           mov     ax,1C2h
+ff13b: e8 a5 01           call    0FF2E3h
+ff13e: f6 06 62 0f ff     test    byte ptr [0F62h],0FFh
+ff143: 74 0d              je      0FF152h
+ff145: ff 1e 68 0f        call    far ptr  [0F68h]
+ff149: 73 13              jae     0FF15Eh
+ff14b: f6 06 59 0f ff     test    byte ptr [0F59h],0FFh
+ff150: 74 05              je      0FF157h
+ff152: e8 93 06           call    0FF7E8h
+ff155: 73 07              jae     0FF15Eh
+ff157: 8a 16 52 0f        mov     dl,[0F52h]
+ff15b: e8 0c 0e           call    0FFF6Ah
+ff15e: eb ae              jmp     0FF10Eh
+ff160: 3c 4d              cmp     al,4Dh
+ff162: 75 07              jne     0FF16Bh
+ff164: e8 e1 03           call    0FF548h
+ff167: 72 a5              jb      0FF10Eh
+ff169: eb f9              jmp     0FF164h
+ff16b: 3c 50              cmp     al,50h
+ff16d: 75 07              jne     0FF176h
+ff16f: e8 bd 04           call    0FF62Fh
+ff172: cd 7c              int     7Ch
+ff174: eb 98              jmp     0FF10Eh
+ff176: 3c 54              cmp     al,54h
+ff178: 75 1b              jne     0FF195h
+ff17a: b8 b3 01           mov     ax,1B3h
+ff17d: e8 63 01           call    0FF2E3h
+ff180: e8 34 02           call    0FF3B7h
+ff183: 73 05              jae     0FF18Ah
+ff185: e8 07 01           call    0FF28Fh
+ff188: eb f0              jmp     0FF17Ah
+ff18a: a2 53 0f           mov     [0F53h],al
+ff18d: c6 06 5b 0f ff     mov     byte ptr [0F5Bh],0FFh
+ff192: e9 79 ff           jmp     0FF10Eh
+ff195: b8 b7 01           mov     ax,1B7h
+ff198: e8 48 01           call    0FF2E3h
+ff19b: e9 70 ff           jmp     0FF10Eh
+ff19e: 42                 inc     dx
+ff19f: 2c 43              sub     al,43h
+ff1a1: 2c 44              sub     al,44h
+ff1a3: 2c 4c              sub     al,4Ch
+ff1a5: 2c 4d              sub     al,4Dh
+ff1a7: 2c 50              sub     al,50h
+ff1a9: 2c 54              sub     al,54h
+ff1ab: 3a 00              cmp     al,[bx+si]
+ff1ad: 56                 push    si
+ff1ae: 20 36 2e 30        and     [302Eh],dh
+ff1b2: 00 4f 53           add     [bx+53h],cl
+ff1b5: 3a 00              cmp     al,[bx+si]
+ff1b7: 3f                 aas     
+ff1b8: 0a 07              or      al,[bx]
+ff1ba: 00 54 00           add     [si],dl
+ff1bd: 4c                 dec     sp
+ff1be: 00 45 3a           add     [di+3Ah],al
+ff1c1: 00 44 00           add     [si],al
+ff1c4: f6 06 61 0f ff     test    byte ptr [0F61h],0FFh
+ff1c9: 74 1d              je      0FF1E8h
+ff1cb: b8 c2 01           mov     ax,1C2h
+ff1ce: e8 12 01           call    0FF2E3h
+ff1d1: f6 06 62 0f ff     test    byte ptr [0F62h],0FFh
+ff1d6: 74 0d              je      0FF1E5h
+ff1d8: ff 1e 68 0f        call    far ptr  [0F68h]
+ff1dc: 73 0a              jae     0FF1E8h
+ff1de: f6 06 59 0f ff     test    byte ptr [0F59h],0FFh
+ff1e3: 74 03              je      0FF1E8h
+ff1e5: e8 00 06           call    0FF7E8h
+ff1e8: c6 06 63 0f ff     mov     byte ptr [0F63h],0FFh
+ff1ed: b8 bb 01           mov     ax,1BBh
+ff1f0: e8 f0 00           call    0FF2E3h
+ff1f3: e8 52 03           call    0FF548h
+ff1f6: 73 03              jae     0FF1FBh
+ff1f8: e9 13 ff           jmp     0FF10Eh
+ff1fb: 80 3e 63 0f ff     cmp     byte ptr [0F63h],0FFh
+ff200: 74 32              je      0FF234h
+ff202: 06                 push    es 
+ff203: a1 5e 0f           mov     ax,[0F5Eh]
+ff206: 33 f6              xor     si,si
+ff208: 8e c6              mov     es,si
+ff20a: 8b c8              mov     cx,ax
+ff20c: 3d 00 10           cmp     ax,1000h
+ff20f: 72 03              jb      0FF214h
+ff211: b9 00 10           mov     cx,1000h
+ff214: 2b c1              sub     ax,cx
+ff216: d1 e1              shl     cx,1
+ff218: d1 e1              shl     cx,1
+ff21a: d1 e1              shl     cx,1
+ff21c: 26 8b 1c           mov     bx,es:[si]
+ff21f: 26 89 1c           mov     es:[si],bx
+ff222: 46                 inc     si
+ff223: 46                 inc     si
+ff224: e2 f6              loop    0FF21Ch
+ff226: 23 c0              and     ax,ax
+ff228: 74 09              je      0FF233h
+ff22a: 8c c3              mov     bx,es
+ff22c: 80 c7 10           add     bh,10h
+ff22f: 8e c3              mov     es,bx
+ff231: eb d7              jmp     0FF20Ah
+ff233: 07                 pop     es 
+ff234: b8 bd 01           mov     ax,1BDh
+ff237: e8 a9 00           call    0FF2E3h
+ff23a: a0 62 0f           mov     al,[0F62h]
+ff23d: f6 d0              not     al
+ff23f: 0a 06 5b 0f        or      al,[0F5Bh]
+ff243: 75 0b              jne     0FF250h
+ff245: ff 1e 64 0f        call    far ptr  [0F64h]
+ff249: f6 06 59 0f ff     test    byte ptr [0F59h],0FFh
+ff24e: 74 0a              je      0FF25Ah
+ff250: f6 06 5a 0f ff     test    byte ptr [0F5Ah],0FFh
+ff255: 74 03              je      0FF25Ah
+ff257: e8 44 06           call    0FF89Eh
+ff25a: 8a 16 52 0f        mov     dl,[0F52h]
+ff25e: e8 09 0d           call    0FFF6Ah
+ff261: e9 aa fe           jmp     0FF10Eh
+ff264: 33 c0              xor     ax,ax
+ff266: 8e c0              mov     es,ax
+ff268: 26 c5 06 40 02     lds     ax,es:[240h]
+ff26d: 8b f0              mov     si,ax
+ff26f: b1 04              mov     cl,4h
+ff271: 05 0f 00           add     ax,0Fh
+ff274: d3 e8              shr     ax,cl
+ff276: 8c db              mov     bx,ds
+ff278: 03 c3              add     ax,bx
+ff27a: 3d 80 01           cmp     ax,180h
+ff27d: 76 0e              jbe     0FF28Dh
+ff27f: 3d 00 20           cmp     ax,2000h
+ff282: 73 09              jae     0FF28Dh
+ff284: bf 10 0f           mov     di,0F10h
+ff287: b9 40 00           mov     cx,40h
+ff28a: fc                 cld     
+ff28b: f3 a4              rep     movsb   
+ff28d: ff e5              jmp     bp
+ff28f: 50                 push    ax
+ff290: 51                 push    cx
+ff291: b0 36              mov     al,36h                ; speaker on, make tone for a while
+ff293: e6 46              out     46h,al
+ff295: b0 00              mov     al,0h
+ff297: e6 40              out     40h,al
+ff299: b0 04              mov     al,4h
+ff29b: e6 40              out     40h,al
+ff29d: b9 00 80           mov     cx,8000h              l wait...
+ff2a0: e2 fe              loop    0FF2A0h
+ff2a2: b0 36              mov     al,36h                ; speaker off
+ff2a4: e6 46              out     46h,al
+ff2a6: 59                 pop     cx
+ff2a7: 58                 pop     ax
+ff2a8: c3                 ret     
+ff2a9: e8 31 00           call    0FF2DDh
+ff2ac: 3c c0              cmp     al,0C0h
+ff2ae: 74 f9              je      0FF2A9h
+ff2b0: 24 7f              and     al,7Fh
+ff2b2: 3c 61              cmp     al,61h
+ff2b4: 7c 08              jl      0FF2BEh
+ff2b6: 3c 7a              cmp     al,7Ah
+ff2b8: 7f 04              jg      0FF2BEh
+ff2ba: 04 e0              add     al,0E0h
+ff2bc: eb 06              jmp     0FF2C4h
+ff2be: 3c 3b              cmp     al,3Bh
+ff2c0: 75 02              jne     0FF2C4h
+ff2c2: b0 3a              mov     al,3Ah
+ff2c4: 50                 push    ax
+ff2c5: e8 41 00           call    0FF309h
+ff2c8: e8 12 00           call    0FF2DDh
+ff2cb: 3c c0              cmp     al,0C0h
+ff2cd: 75 f9              jne     0FF2C8h
+ff2cf: 58                 pop     ax
+ff2d0: c3                 ret     
+ff2d1: e4 66              in      al,66h
+ff2d3: 24 01              and     al,1h
+ff2d5: 74 04              je      0FF2DBh
+ff2d7: e4 64              in      al,64h
+ff2d9: f8                 clc     
+ff2da: c3                 ret     
+ff2db: f9                 stc     
+ff2dc: c3                 ret     
+ff2dd: e8 f1 ff           call    0FF2D1h
+ff2e0: 72 fb              jb      0FF2DDh
+ff2e2: c3                 ret     
+ff2e3: e8 7a 00           call    0FF360h
+ff2e6: 8b f0              mov     si,ax
+ff2e8: e8 a4 00           call    0FF38Fh
+ff2eb: 2e 8a 04           mov     al,cs:[si]
+ff2ee: 22 c0              and     al,al
+ff2f0: 74 06              je      0FF2F8h
+ff2f2: 46                 inc     si
+ff2f3: e8 13 00           call    0FF309h
+ff2f6: eb f3              jmp     0FF2EBh
+ff2f8: c3                 ret     
+ff2f9: 50                 push    ax
+ff2fa: b0 80              mov     al,80h
+ff2fc: e6 22              out     22h,al
+ff2fe: a0 10 0d           mov     al,[0D10h]
+ff301: e6 20              out     20h,al
+ff303: b0 1b              mov     al,1Bh
+ff305: e6 20              out     20h,al
+ff307: 58                 pop     ax
+ff308: c3                 ret     
+ff309: e8 54 00           call    0FF360h
+ff30c: 3c 07              cmp     al,7h
+ff30e: 75 06              jne     0FF316h
+ff310: e8 7c ff           call    0FF28Fh
+ff313: eb 27              jmp     0FF33Ch
+ff315: 90                 nop     
+ff316: 3c 0a              cmp     al,0Ah
+ff318: 75 06              jne     0FF320h
+ff31a: e8 23 00           call    0FF340h
+ff31d: eb 1d              jmp     0FF33Ch
+ff31f: 90                 nop     
+ff320: 3c 20              cmp     al,20h
+ff322: 7c 18              jl      0FF33Ch
+ff324: 32 ff              xor     bh,bh
+ff326: 8a 1e 10 0d        mov     bl,[0D10h]
+ff32a: 88 87 70 0c        mov     [bx+0C70h],al
+ff32e: fe c3              inc     bl
+ff330: 88 1e 10 0d        mov     [0D10h],bl
+ff334: 80 fb 50           cmp     bl,50h
+ff337: 75 03              jne     0FF33Ch
+ff339: e8 04 00           call    0FF340h
+ff33c: e8 ba ff           call    0FF2F9h
+ff33f: c3                 ret     
+ff340: e8 1d 00           call    0FF360h
+ff343: 1e                 push    ds 
+ff344: 07                 pop     es 
+ff345: be 50 04           mov     si,450h
+ff348: bf 00 04           mov     di,400h
+ff34b: b9 70 08           mov     cx,870h
+ff34e: fc                 cld     
+ff34f: f3 a4              rep     movsb   
+ff351: b0 20              mov     al,20h
+ff353: bf 70 0c           mov     di,0C70h
+ff356: b9 50 00           mov     cx,50h
+ff359: f3 aa              rep     stosb   
+ff35b: 88 0e 10 0d        mov     [0D10h],cl
+ff35f: c3                 ret     
+ff360: 53                 push    bx
+ff361: 51                 push    cx
+ff362: 52                 push    dx
+ff363: 57                 push    di
+ff364: 56                 push    si
+ff365: 55                 push    bp
+ff366: 06                 push    es 
+ff367: 1e                 push    ds 
+ff368: bb 7f 03           mov     bx,37Fh
+ff36b: 53                 push    bx
+ff36c: 50                 push    ax
+ff36d: 8b ec              mov     bp,sp
+ff36f: 8b 5e 14           mov     bx,[bp+14h]
+ff372: 89 5e 00           mov     [bp],bx
+ff375: 89 46 14           mov     [bp+14h],ax
+ff378: 8b 5e 12           mov     bx,[bp+12h]
+ff37b: 8b 6e 08           mov     bp,[bp+8h]
+ff37e: c3                 ret     
+ff37f: 1f                 pop     ds 
+ff380: 07                 pop     es 
+ff381: 5d                 pop     bp
+ff382: 5e                 pop     si
+ff383: 5f                 pop     di
+ff384: 5a                 pop     dx
+ff385: 59                 pop     cx
+ff386: 5b                 pop     bx
+ff387: 58                 pop     ax
+ff388: c3                 ret     
+ff389: b0 20              mov     al,20h
+ff38b: e8 7b ff           call    0FF309h
+ff38e: c3                 ret     
+ff38f: b0 0a              mov     al,0Ah
+ff391: e8 75 ff           call    0FF309h
+ff394: c3                 ret     
+ff395: 33 d2              xor     dx,dx
+ff397: 24 0f              and     al,0Fh
+ff399: b1 04              mov     cl,4h
+ff39b: d3 e2              shl     dx,cl
+ff39d: 0a d0              or      dl,al
+ff39f: e8 07 ff           call    0FF2A9h
+ff3a2: 3c 30              cmp     al,30h
+ff3a4: 7c 10              jl      0FF3B6h
+ff3a6: 3c 39              cmp     al,39h
+ff3a8: 7e ed              jle     0FF397h
+ff3aa: 3c 41              cmp     al,41h
+ff3ac: 7c 08              jl      0FF3B6h
+ff3ae: 3c 46              cmp     al,46h
+ff3b0: 7f 04              jg      0FF3B6h
+ff3b2: 04 09              add     al,9h
+ff3b4: eb e1              jmp     0FF397h
+ff3b6: c3                 ret     
+ff3b7: 33 db              xor     bx,bx
+ff3b9: e8 ed fe           call    0FF2A9h
+ff3bc: 3c 0a              cmp     al,0Ah
+ff3be: 75 08              jne     0FF3C8h
+ff3c0: bb ff 00           mov     bx,0FFh
+ff3c3: eb 1e              jmp     0FF3E3h
+ff3c5: e8 e1 fe           call    0FF2A9h
+ff3c8: 3c 30              cmp     al,30h
+ff3ca: 7c 12              jl      0FF3DEh
+ff3cc: 3c 39              cmp     al,39h
+ff3ce: 7f 0e              jg      0FF3DEh
+ff3d0: 2c 30              sub     al,30h
+ff3d2: 32 e4              xor     ah,ah
+ff3d4: 93                 xchg    ax,bx
+ff3d5: b9 0a 00           mov     cx,0Ah
+ff3d8: f7 e1              mul     cx
+ff3da: 03 d8              add     bx,ax
+ff3dc: eb e7              jmp     0FF3C5h
+ff3de: 3c 0a              cmp     al,0Ah
+ff3e0: 74 01              je      0FF3E3h
+ff3e2: f9                 stc     
+ff3e3: 22 ff              and     bh,bh
+ff3e5: 74 01              je      0FF3E8h
+ff3e7: f9                 stc     
+ff3e8: 8b c3              mov     ax,bx
+ff3ea: c3                 ret     
+ff3eb: e8 72 ff           call    0FF360h
+ff3ee: b5 04              mov     ch,4h
+ff3f0: eb 07              jmp     0FF3F9h
+ff3f2: e8 6b ff           call    0FF360h
+ff3f5: b5 02              mov     ch,2h
+ff3f7: 8a f2              mov     dh,dl
+ff3f9: b1 04              mov     cl,4h
+ff3fb: 8a c6              mov     al,dh
+ff3fd: d2 e8              shr     al,cl
+ff3ff: 3c 09              cmp     al,9h
+ff401: 7e 02              jle     0FF405h
+ff403: 04 07              add     al,7h
+ff405: 04 30              add     al,30h
+ff407: e8 ff fe           call    0FF309h
+ff40a: d3 e2              shl     dx,cl
+ff40c: fe cd              dec     ch
+ff40e: 75 eb              jne     0FF3FBh
+ff410: c3                 ret     
+ff411: e8 7b ff           call    0FF38Fh
+ff414: 8c c2              mov     dx,es
+ff416: e8 d2 ff           call    0FF3EBh
+ff419: b0 3a              mov     al,3Ah
+ff41b: e8 eb fe           call    0FF309h
+ff41e: 8b d3              mov     dx,bx
+ff420: e8 c8 ff           call    0FF3EBh
+ff423: c3                 ret     
+ff424: 32 c0              xor     al,al
+ff426: e6 22              out     22h,al
+ff428: b0 4f              mov     al,4Fh
+ff42a: e6 20              out     20h,al
+ff42c: b0 1c              mov     al,1Ch
+ff42e: e6 20              out     20h,al
+ff430: b0 7a              mov     al,7Ah
+ff432: e6 20              out     20h,al
+ff434: b0 09              mov     al,9h
+ff436: e6 20              out     20h,al
+ff438: b0 0f              mov     al,0Fh
+ff43a: e6 05              out     5h,al
+ff43c: b0 89              mov     al,89h
+ff43e: e6 05              out     5h,al
+ff440: b0 0f              mov     al,0Fh
+ff442: e6 07              out     7h,al
+ff444: b0 89              mov     al,89h
+ff446: e6 07              out     7h,al
+ff448: b0 00              mov     al,0h
+ff44a: e6 04              out     4h,al
+ff44c: b0 04              mov     al,4h
+ff44e: e6 04              out     4h,al
+ff450: b0 00              mov     al,0h
+ff452: e6 06              out     6h,al
+ff454: b0 04              mov     al,4h
+ff456: e6 06              out     6h,al
+ff458: b0 c4              mov     al,0C4h
+ff45a: e6 08              out     8h,al
+ff45c: ff e5              jmp     bp
+ff45e: 33 d2              xor     dx,dx
+ff460: b0 18              mov     al,18h
+ff462: e6 66              out     66h,al
+ff464: b0 04              mov     al,4h
+ff466: e6 66              out     66h,al
+ff468: b0 c4              mov     al,0C4h
+ff46a: e6 66              out     66h,al
+ff46c: b0 03              mov     al,3h
+ff46e: e6 66              out     66h,al
+ff470: b0 c1              mov     al,0C1h
+ff472: e6 66              out     66h,al
+ff474: b0 01              mov     al,1h
+ff476: e6 66              out     66h,al
+ff478: 48                 dec     ax
+ff479: e6 66              out     66h,al
+ff47b: b0 02              mov     al,2h
+ff47d: e6 62              out     62h,al
+ff47f: 32 c0              xor     al,al
+ff481: e6 62              out     62h,al
+ff483: b0 05              mov     al,5h
+ff485: e6 66              out     66h,al
+ff487: b0 68              mov     al,68h
+ff489: e6 66              out     66h,al
+ff48b: b0 92              mov     al,92h
+ff48d: e6 64              out     64h,al
+ff48f: ff e5              jmp     bp
+ff491: e8 3d fe           call    0FF2D1h
+ff494: 73 fb              jae     0FF491h
+ff496: b0 92              mov     al,92h
+ff498: e6 64              out     64h,al
+ff49a: b9 00 80           mov     cx,8000h
+ff49d: e8 31 fe           call    0FF2D1h
+ff4a0: 73 08              jae     0FF4AAh
+ff4a2: e2 f9              loop    0FF49Dh
+ff4a4: 81 ca 80 00        or      dx,80h
+ff4a8: eb 08              jmp     0FF4B2h
+ff4aa: 3c c0              cmp     al,0C0h
+ff4ac: 74 04              je      0FF4B2h
+ff4ae: 81 ca 00 01        or      dx,100h
+ff4b2: c3                 ret     
+ff4b3: b8 00 ff           mov     ax,0FF00h
+ff4b6: 8e c0              mov     es,ax
+ff4b8: 33 ff              xor     di,di
+ff4ba: b9 00 10           mov     cx,1000h
+ff4bd: 33 c0              xor     ax,ax
+ff4bf: 26 02 25           add     ah,es:[di]
+ff4c2: 47                 inc     di
+ff4c3: e2 fa              loop    0FF4BFh
+ff4c5: 80 fc 41           cmp     ah,41h
+ff4c8: 74 05              je      0FF4CFh
+ff4ca: b2 e0              mov     dl,0E0h
+ff4cc: eb 03              jmp     0FF4D1h
+ff4ce: 90                 nop     
+ff4cf: ff e5              jmp     bp
+ff4d1: 8a c2              mov     al,dl
+ff4d3: 24 f0              and     al,0F0h
+ff4d5: b1 04              mov     cl,4h
+ff4d7: d2 c8              ror     al,cl
+ff4d9: 04 b0              add     al,0B0h
+ff4db: e6 64              out     64h,al
+ff4dd: 8a c2              mov     al,dl
+ff4df: 24 0f              and     al,0Fh
+ff4e1: 04 a0              add     al,0A0h
+ff4e3: e6 64              out     64h,al
+ff4e5: ba 05 00           mov     dx,5h
+ff4e8: b0 36              mov     al,36h                ; speaker on, make tone for a while
+ff4ea: e6 46              out     46h,al
+ff4ec: 32 c0              xor     al,al
+ff4ee: e6 40              out     40h,al
+ff4f0: b0 04              mov     al,4h
+ff4f2: e6 40              out     40h,al
+ff4f4: b9 00 80           mov     cx,8000h              ; wait...
+ff4f7: e2 fe              loop    0FF4F7h
+ff4f9: b0 36              mov     al,36h
+ff4fb: e6 46              out     46h,al                ; speaker off
+ff4fd: b9 ff ff           mov     cx,0FFFFh
+ff500: e2 fe              loop    0FF500h
+ff502: 4a                 dec     dx
+ff503: 75 e3              jne     0FF4E8h
+ff505: eb fe              jmp     0FF505h
+ff507: 33 c0              xor     ax,ax
+ff509: 8e c0              mov     es,ax
+ff50b: 8e d8              mov     ds,ax
+ff50d: bf 00 04           mov     di,400h
+ff510: b9 10 09           mov     cx,910h
+ff513: b0 20              mov     al,20h
+ff515: fc                 cld     
+ff516: f3 aa              rep     stosb   
+ff518: 88 0e 10 0d        mov     [0D10h],cl
+ff51c: b8 f3 f3           mov     ax,0F3F3h
+ff51f: a3 0e 0d           mov     [0D0Eh],ax
+ff522: b0 27              mov     al,27h
+ff524: e6 22              out     22h,al
+ff526: ff e5              jmp     bp
+ff528: 33 c0              xor     ax,ax
+ff52a: 8e c0              mov     es,ax
+ff52c: bf 00 04           mov     di,400h
+ff52f: b9 00 0a           mov     cx,0A00h
+ff532: f3 ab              rep     stosw   
+ff534: be 00 04           mov     si,400h
+ff537: b9 00 0a           mov     cx,0A00h
+ff53a: bd 40 05           mov     bp,540h
+ff53d: e9 8f 00           jmp     0FF5CFh
+ff540: 73 04              jae     0FF546h
+ff542: b2 e1              mov     dl,0E1h
+ff544: eb 8b              jmp     0FF4D1h
+ff546: ff e4              jmp     sp
+ff548: e8 15 fe           call    0FF360h
+ff54b: e8 41 fe           call    0FF38Fh
+ff54e: 33 c0              xor     ax,ax
+ff550: 8e c0              mov     es,ax
+ff552: 8b f0              mov     si,ax
+ff554: b9 00 02           mov     cx,200h
+ff557: bd 5d 05           mov     bp,55Dh
+ff55a: eb 73              jmp     0FF5CFh
+ff55c: 90                 nop     
+ff55d: 72 4c              jb      0FF5ABh
+ff55f: 33 c0              xor     ax,ax
+ff561: 8e c0              mov     es,ax
+ff563: be 00 18           mov     si,1800h
+ff566: b9 00 74           mov     cx,7400h
+ff569: bd 6f 05           mov     bp,56Fh
+ff56c: eb 61              jmp     0FF5CFh
+ff56e: 90                 nop     
+ff56f: 72 3a              jb      0FF5ABh
+ff571: b8 00 10           mov     ax,1000h
+ff574: 50                 push    ax
+ff575: b0 2a              mov     al,2Ah
+ff577: e8 8f fd           call    0FF309h
+ff57a: 58                 pop     ax
+ff57b: b9 00 80           mov     cx,8000h
+ff57e: 8e c0              mov     es,ax
+ff580: 33 f6              xor     si,si
+ff582: 33 db              xor     bx,bx
+ff584: 26 89 1c           mov     es:[si],bx
+ff587: 26 8b 04           mov     ax,es:[si]
+ff58a: 3d ff ff           cmp     ax,0FFFFh
+ff58d: 74 19              je      0FF5A8h
+ff58f: bd 95 05           mov     bp,595h
+ff592: eb 3b              jmp     0FF5CFh
+ff594: 90                 nop     
+ff595: 72 14              jb      0FF5ABh
+ff597: 8c c0              mov     ax,es
+ff599: 80 c4 10           add     ah,10h
+ff59c: 3d 00 80           cmp     ax,8000h
+ff59f: 75 d3              jne     0FF574h
+ff5a1: 50                 push    ax
+ff5a2: b0 2a              mov     al,2Ah
+ff5a4: e8 62 fd           call    0FF309h
+ff5a7: 58                 pop     ax
+ff5a8: f8                 clc     
+ff5a9: eb 23              jmp     0FF5CEh
+ff5ab: 50                 push    ax
+ff5ac: 53                 push    bx
+ff5ad: 06                 push    es 
+ff5ae: 56                 push    si
+ff5af: 8a d1              mov     dl,cl
+ff5b1: e8 b6 09           call    0FFF6Ah
+ff5b4: 5b                 pop     bx
+ff5b5: 07                 pop     es 
+ff5b6: e8 58 fe           call    0FF411h
+ff5b9: e8 cd fd           call    0FF389h
+ff5bc: e8 ca fd           call    0FF389h
+ff5bf: 5a                 pop     dx
+ff5c0: e8 28 fe           call    0FF3EBh
+ff5c3: e8 c3 fd           call    0FF389h
+ff5c6: e8 c0 fd           call    0FF389h
+ff5c9: 5a                 pop     dx
+ff5ca: e8 1e fe           call    0FF3EBh
+ff5cd: f9                 stc     
+ff5ce: c3                 ret     
+ff5cf: 8b fe              mov     di,si
+ff5d1: 8b d9              mov     bx,cx
+ff5d3: 33 c0              xor     ax,ax
+ff5d5: 26 89 04           mov     es:[si],ax
+ff5d8: 26 8b 04           mov     ax,es:[si]
+ff5db: 23 c0              and     ax,ax
+ff5dd: 75 2d              jne     0FF60Ch
+ff5df: f7 d0              not     ax
+ff5e1: 26 89 04           mov     es:[si],ax
+ff5e4: 26 8b 04           mov     ax,es:[si]
+ff5e7: f7 d0              not     ax
+ff5e9: 75 29              jne     0FF614h
+ff5eb: 26 89 34           mov     es:[si],si
+ff5ee: 26 8b 04           mov     ax,es:[si]
+ff5f1: 3b c6              cmp     ax,si
+ff5f3: 75 2a              jne     0FF61Fh
+ff5f5: 46                 inc     si
+ff5f6: 46                 inc     si
+ff5f7: e2 da              loop    0FF5D3h
+ff5f9: 8b f7              mov     si,di
+ff5fb: 8b cb              mov     cx,bx
+ff5fd: 26 8b 04           mov     ax,es:[si]
+ff600: 3b c6              cmp     ax,si
+ff602: 75 23              jne     0FF627h
+ff604: 46                 inc     si
+ff605: 46                 inc     si
+ff606: e2 f5              loop    0FF5FDh
+ff608: f8                 clc     
+ff609: eb 22              jmp     0FF62Dh
+ff60b: 90                 nop     
+ff60c: b9 e2 00           mov     cx,0E2h
+ff60f: 33 db              xor     bx,bx
+ff611: eb 19              jmp     0FF62Ch
+ff613: 90                 nop     
+ff614: b9 e3 00           mov     cx,0E3h
+ff617: bb ff ff           mov     bx,0FFFFh
+ff61a: f7 d0              not     ax
+ff61c: eb 0e              jmp     0FF62Ch
+ff61e: 90                 nop     
+ff61f: b9 e4 00           mov     cx,0E4h
+ff622: 8b de              mov     bx,si
+ff624: eb 06              jmp     0FF62Ch
+ff626: 90                 nop     
+ff627: b9 e5 00           mov     cx,0E5h
+ff62a: 8b de              mov     bx,si
+ff62c: f9                 stc     
+ff62d: ff e5              jmp     bp
+ff62f: 32 c0              xor     al,al
+ff631: a2 fa 01           mov     [1FAh],al
+ff634: 8c 0e f2 01        mov     [1F2h],cs
+ff638: b8 3f 06           mov     ax,63Fh
+ff63b: a3 f0 01           mov     [1F0h],ax
+ff63e: c3                 ret     
+ff63f: 56                 push    si
+ff640: 50                 push    ax
+ff641: 53                 push    bx
+ff642: 51                 push    cx
+ff643: 52                 push    dx
+ff644: 57                 push    di
+ff645: 55                 push    bp
+ff646: 1e                 push    ds 
+ff647: 06                 push    es 
+ff648: 8b ec              mov     bp,sp
+ff64a: 33 c0              xor     ax,ax
+ff64c: 8e d8              mov     ds,ax
+ff64e: 16                 push    ss 
+ff64f: 8b c4              mov     ax,sp
+ff651: 05 1a 00           add     ax,1Ah
+ff654: 50                 push    ax
+ff655: 55                 push    bp
+ff656: bd 5c 06           mov     bp,65Ch
+ff659: e9 c8 fd           jmp     0FF424h
+ff65c: bd 62 06           mov     bp,662h
+ff65f: e9 a5 fe           jmp     0FF507h
+ff662: 5d                 pop     bp
+ff663: c4 5e 12           les     bx,[bp+12h]
+ff666: 83 eb 02           sub     bx,2h
+ff669: e8 a5 fd           call    0FF411h
+ff66c: 80 3e fa 01 00     cmp     byte ptr [1FAh],0h
+ff671: 74 12              je      0FF685h
+ff673: 89 5e 12           mov     [bp+12h],bx
+ff676: c4 1e f4 01        les     bx,[1F4h]
+ff67a: a1 f8 01           mov     ax,[1F8h]
+ff67d: 26 89 07           mov     es:[bx],ax
+ff680: c6 06 fa 01 00     mov     byte ptr [1FAh],0h
+ff685: e8 07 fd           call    0FF38Fh
+ff688: b0 2b              mov     al,2Bh
+ff68a: e8 7c fc           call    0FF309h
+ff68d: e8 19 fc           call    0FF2A9h
+ff690: 3c 0a              cmp     al,0Ah
+ff692: 74 f1              je      0FF685h
+ff694: 3c 50              cmp     al,50h
+ff696: 74 2f              je      0FF6C7h
+ff698: 3c 30              cmp     al,30h
+ff69a: 7c 6e              jl      0FF70Ah
+ff69c: 3c 39              cmp     al,39h
+ff69e: 7f 58              jg      0FF6F8h
+ff6a0: e8 f2 fc           call    0FF395h
+ff6a3: 3c 3a              cmp     al,3Ah
+ff6a5: 75 04              jne     0FF6ABh
+ff6a7: 8e c2              mov     es,dx
+ff6a9: eb e2              jmp     0FF68Dh
+ff6ab: 8b da              mov     bx,dx
+ff6ad: 3c 2f              cmp     al,2Fh
+ff6af: 74 4a              je      0FF6FBh
+ff6b1: 3c 48              cmp     al,48h
+ff6b3: 74 35              je      0FF6EAh
+ff6b5: 3c 49              cmp     al,49h
+ff6b7: 74 45              je      0FF6FEh
+ff6b9: 3c 4f              cmp     al,4Fh
+ff6bb: 74 5a              je      0FF717h
+ff6bd: 3c 47              cmp     al,47h
+ff6bf: 75 49              jne     0FF70Ah
+ff6c1: 89 5e 12           mov     [bp+12h],bx
+ff6c4: 8c 46 14           mov     [bp+14h],es
+ff6c7: 80 3e fa 01 00     cmp     byte ptr [1FAh],0h
+ff6cc: 74 10              je      0FF6DEh
+ff6ce: c4 1e f4 01        les     bx,[1F4h]
+ff6d2: 26 8b 07           mov     ax,es:[bx]
+ff6d5: a3 f8 01           mov     [1F8h],ax
+ff6d8: b8 cd 7c           mov     ax,7CCDh
+ff6db: 26 89 07           mov     es:[bx],ax
+ff6de: 8b e5              mov     sp,bp
+ff6e0: 07                 pop     es 
+ff6e1: 1f                 pop     ds 
+ff6e2: 5d                 pop     bp
+ff6e3: 5f                 pop     di
+ff6e4: 5a                 pop     dx
+ff6e5: 59                 pop     cx
+ff6e6: 5b                 pop     bx
+ff6e7: 58                 pop     ax
+ff6e8: 5e                 pop     si
+ff6e9: cf                 iret    
+ff6ea: 8c 06 f6 01        mov     [1F6h],es
+ff6ee: 89 1e f4 01        mov     [1F4h],bx
+ff6f2: fe 06 fa 01        inc     byte ptr [1FAh]
+ff6f6: eb 8d              jmp     0FF685h
+ff6f8: eb 4f              jmp     0FF749h
+ff6fa: 90                 nop     
+ff6fb: eb 6b              jmp     0FF768h
+ff6fd: 90                 nop     
+ff6fe: ec                 in      al,dx
+ff6ff: 8b d0              mov     dx,ax
+ff701: e8 85 fc           call    0FF389h
+ff704: e8 eb fc           call    0FF3F2h
+ff707: e9 7b ff           jmp     0FF685h
+ff70a: b0 3f              mov     al,3Fh
+ff70c: e8 fa fb           call    0FF309h
+ff70f: b0 07              mov     al,7h
+ff711: e8 f5 fb           call    0FF309h
+ff714: e9 6e ff           jmp     0FF685h
+ff717: b0 3d              mov     al,3Dh
+ff719: e8 ed fb           call    0FF309h
+ff71c: 33 c0              xor     ax,ax
+ff71e: e8 74 fc           call    0FF395h
+ff721: 3c 0a              cmp     al,0Ah
+ff723: 75 e5              jne     0FF70Ah
+ff725: 8b c2              mov     ax,dx
+ff727: 8b d3              mov     dx,bx
+ff729: ee                 out     dx,al
+ff72a: e9 58 ff           jmp     0FF685h
+ff72d: 50                 push    ax
+ff72e: 53                 push    bx
+ff72f: 53                 push    bx
+ff730: 53                 push    bx
+ff731: 53                 push    bx
+ff732: 45                 inc     bp
+ff733: 53                 push    bx
+ff734: 44                 inc     sp
+ff735: 50                 push    ax
+ff736: 42                 inc     dx
+ff737: 49                 dec     cx
+ff738: 44                 inc     sp
+ff739: 58                 pop     ax
+ff73a: 44                 inc     sp
+ff73b: 58                 pop     ax
+ff73c: 43                 inc     bx
+ff73d: 58                 pop     ax
+ff73e: 42                 inc     dx
+ff73f: 58                 pop     ax
+ff740: 41                 inc     cx
+ff741: 49                 dec     cx
+ff742: 53                 push    bx
+ff743: 50                 push    ax
+ff744: 49                 dec     cx
+ff745: 53                 push    bx
+ff746: 43                 inc     bx
+ff747: 4c                 dec     sp
+ff748: 46                 inc     si
+ff749: 8a d0              mov     dl,al
+ff74b: e8 5b fb           call    0FF2A9h
+ff74e: 8a e2              mov     ah,dl
+ff750: b9 0e 00           mov     cx,0Eh
+ff753: bb fa ff           mov     bx,0FFFAh
+ff756: 83 c3 02           add     bx,2h
+ff759: 2e 3b 87 31 07     cmp     ax,cs:[bx+731h]
+ff75e: e0 f6              loopne  0FF756h
+ff760: 75 32              jne     0FF794h
+ff762: 03 dd              add     bx,bp
+ff764: 8c d0              mov     ax,ss
+ff766: 8e c0              mov     es,ax
+ff768: e8 1e fc           call    0FF389h
+ff76b: 26 8b 17           mov     dx,es:[bx]
+ff76e: e8 7a fc           call    0FF3EBh
+ff771: e8 15 fc           call    0FF389h
+ff774: e8 32 fb           call    0FF2A9h
+ff777: 3c 0a              cmp     al,0Ah
+ff779: 74 16              je      0FF791h
+ff77b: 3c 0d              cmp     al,0Dh
+ff77d: 74 1f              je      0FF79Eh
+ff77f: 3c 30              cmp     al,30h
+ff781: 7c 11              jl      0FF794h
+ff783: 3c 39              cmp     al,39h
+ff785: 7f 0d              jg      0FF794h
+ff787: e8 0b fc           call    0FF395h
+ff78a: 3c 0a              cmp     al,0Ah
+ff78c: 75 09              jne     0FF797h
+ff78e: 26 89 17           mov     es:[bx],dx
+ff791: e9 f1 fe           jmp     0FF685h
+ff794: e9 73 ff           jmp     0FF70Ah
+ff797: 3c 0d              cmp     al,0Dh
+ff799: 75 f9              jne     0FF794h
+ff79b: 26 89 17           mov     es:[bx],dx
+ff79e: 83 c3 02           add     bx,2h
+ff7a1: e8 6d fc           call    0FF411h
+ff7a4: eb c2              jmp     0FF768h
+ff7a6: 0a 18              or      bl,[bx+si]
+ff7a8: 18 02              sbb     [bp+si],al
+ff7aa: 35 04 20           xor     ax,2004h
+ff7ad: 05 80 07           add     ax,780h
+ff7b0: 7e 07              jle     0FF7B9h
+ff7b2: 03 dc              add     bx,sp
+ff7b4: 41                 inc     cx
+ff7b5: 08 33              or      [bp+di],dh
+ff7b7: dd 20              frstor  [bx+si]
+ff7b9: 07                 pop     es 
+ff7ba: 03 d8              add     bx,ax
+ff7bc: 41                 inc     cx
+ff7bd: 08 33              or      [bp+di],dh
+ff7bf: d9 20              fldenv  word ptr [bx+si]
+ff7c1: 04 01              add     al,1h
+ff7c3: 00 03              add     [bp+di],al
+ff7c5: 00 04              add     [si],al
+ff7c7: 81 02 15 eb        add     word ptr [bp+si],0EB15h
+ff7cb: 04 01              add     al,1h
+ff7cd: 00 05              add     [di],al
+ff7cf: 80 0f 18           or      byte ptr [bx],18h
+ff7d2: 18 04              sbb     [si],al
+ff7d4: 20 02              and     [bp+si],al
+ff7d6: 10 05              adc     [di],al
+ff7d8: 80 03 20           add     byte ptr [bp+di],20h
+ff7db: 07                 pop     es 
+ff7dc: 7e 01              jle     0FF7DFh
+ff7de: 04 10              add     al,10h
+ff7e0: 03 05              add     ax,[di]
+ff7e2: 8a 10              mov     dl,[bx+si]
+ff7e4: 03 05              add     ax,[di]
+ff7e6: 80 10 e8           adc     byte ptr [bx+si],0E8h
+ff7e9: 78 01              js      0FF7ECh
+ff7eb: 73 03              jae     0FF7F0h
+ff7ed: e9 a5 00           jmp     0FF895h
+ff7f0: c7 06 74 0f 00 00  mov     word ptr [0F74h],0h
+ff7f6: b0 a1              mov     al,0A1h
+ff7f8: e8 7c 07           call    0FFF77h
+ff7fb: a1 74 0f           mov     ax,[0F74h]
+ff7fe: 3b 06 5e 0f        cmp     ax,[0F5Eh]
+ff802: 72 12              jb      0FF816h
+ff804: e8 6b 04           call    0FFC72h
+ff807: c6 06 08 0f 03     mov     byte ptr [0F08h],3h
+ff80c: a0 77 0f           mov     al,[0F77h]
+ff80f: a2 0b 0f           mov     [0F0Bh],al
+ff812: f8                 clc     
+ff813: e9 83 00           jmp     0FF899h
+ff816: e8 0e 04           call    0FFC27h
+ff819: c6 06 01 10 13     mov     byte ptr [1001h],13h
+ff81e: e8 f2 01           call    0FFA13h
+ff821: 72 6d              jb      0FF890h
+ff823: b0 a1              mov     al,0A1h
+ff825: e8 4f 07           call    0FFF77h
+ff828: e8 8c 01           call    0FF9B7h
+ff82b: 72 51              jb      0FF87Eh
+ff82d: b0 2e              mov     al,2Eh
+ff82f: e8 d7 fa           call    0FF309h
+ff832: a0 00 10           mov     al,[1000h]
+ff835: 3a 06 77 0f        cmp     al,[0F77h]
+ff839: b0 ac              mov     al,0ACh
+ff83b: 75 41              jne     0FF87Eh
+ff83d: 80 3e 01 10 33     cmp     byte ptr [1001h],33h
+ff842: 75 07              jne     0FF84Bh
+ff844: 83 06 74 0f 20     add     word ptr [0F74h],20h
+ff849: eb ab              jmp     0FF7F6h
+ff84b: 80 3e 01 10 53     cmp     byte ptr [1001h],53h
+ff850: 75 08              jne     0FF85Ah
+ff852: e8 34 04           call    0FFC89h
+ff855: b0 ad              mov     al,0ADh
+ff857: eb 3c              jmp     0FF895h
+ff859: 90                 nop     
+ff85a: 80 3e 01 10 93     cmp     byte ptr [1001h],93h
+ff85f: 75 05              jne     0FF866h
+ff861: b0 ae              mov     al,0AEh
+ff863: eb 30              jmp     0FF895h
+ff865: 90                 nop     
+ff866: 80 3e 01 10 19     cmp     byte ptr [1001h],19h
+ff86b: 75 0f              jne     0FF87Ch
+ff86d: b0 af              mov     al,0AFh
+ff86f: ff 06 70 0f        inc     word ptr [0F70h]
+ff873: 83 3e 70 0f 05     cmp     word ptr [0F70h],5h
+ff878: 77 16              ja      0FF890h
+ff87a: eb 9a              jmp     0FF816h
+ff87c: b0 b0              mov     al,0B0h
+ff87e: 50                 push    ax
+ff87f: e8 f5 06           call    0FFF77h
+ff882: 58                 pop     ax
+ff883: ff 06 70 0f        inc     word ptr [0F70h]
+ff887: 83 3e 70 0f 05     cmp     word ptr [0F70h],5h
+ff88c: 77 02              ja      0FF890h
+ff88e: eb 93              jmp     0FF823h
+ff890: 50                 push    ax
+ff891: e8 de 03           call    0FFC72h
+ff894: 58                 pop     ax
+ff895: e8 df 06           call    0FFF77h
+ff898: f9                 stc     
+ff899: 8a 0e 52 0f        mov     cl,[0F52h]
+ff89d: c3                 ret     
+ff89e: e8 c2 00           call    0FF963h
+ff8a1: 73 03              jae     0FF8A6h
+ff8a3: e9 83 00           jmp     0FF929h
+ff8a6: c6 06 01 10 73     mov     byte ptr [1001h],73h
+ff8ab: b9 02 00           mov     cx,2h
+ff8ae: e8 62 01           call    0FFA13h
+ff8b1: 72 76              jb      0FF929h
+ff8b3: e8 01 01           call    0FF9B7h
+ff8b6: 72 52              jb      0FF90Ah
+ff8b8: 80 3e 01 10 13     cmp     byte ptr [1001h],13h
+ff8bd: 75 54              jne     0FF913h
+ff8bf: b0 2e              mov     al,2Eh
+ff8c1: e8 45 fa           call    0FF309h
+ff8c4: e8 81 03           call    0FFC48h
+ff8c7: 72 41              jb      0FF90Ah
+ff8c9: 75 db              jne     0FF8A6h
+ff8cb: c6 06 01 10 73     mov     byte ptr [1001h],73h
+ff8d0: b9 02 00           mov     cx,2h
+ff8d3: e8 3d 01           call    0FFA13h
+ff8d6: 72 51              jb      0FF929h
+ff8d8: 33 c0              xor     ax,ax
+ff8da: 8e c0              mov     es,ax
+ff8dc: a1 04 18           mov     ax,[1804h]
+ff8df: e8 f5 03           call    0FFCD7h
+ff8e2: 72 45              jb      0FF929h
+ff8e4: bd ea 08           mov     bp,8EAh
+ff8e7: e9 3a fb           jmp     0FF424h
+ff8ea: e8 1e 04           call    0FFD0Bh
+ff8ed: b0 03              mov     al,3h
+ff8ef: a2 09 0f           mov     [0F09h],al
+ff8f2: a0 77 0f           mov     al,[0F77h]
+ff8f5: a2 0c 0f           mov     [0F0Ch],al
+ff8f8: a0 53 0f           mov     al,[0F53h]
+ff8fb: a2 0a 0f           mov     [0F0Ah],al
+ff8fe: 32 c0              xor     al,al
+ff900: a2 0f 0f           mov     [0F0Fh],al
+ff903: f8                 clc     
+ff904: a1 08 18           mov     ax,[1808h]
+ff907: e9 14 04           jmp     0FFD1Eh
+ff90a: 50                 push    ax
+ff90b: e8 20 00           call    0FF92Eh
+ff90e: 58                 pop     ax
+ff90f: 72 18              jb      0FF929h
+ff911: eb a0              jmp     0FF8B3h
+ff913: b0 b3              mov     al,0B3h
+ff915: 80 3e 01 10 53     cmp     byte ptr [1001h],53h
+ff91a: 74 0d              je      0FF929h
+ff91c: b0 b1              mov     al,0B1h
+ff91e: 80 3e 01 10 93     cmp     byte ptr [1001h],93h
+ff923: 75 e5              jne     0FF90Ah
+ff925: b0 b2              mov     al,0B2h
+ff927: eb e1              jmp     0FF90Ah
+ff929: e8 4b 06           call    0FFF77h
+ff92c: f9                 stc     
+ff92d: c3                 ret     
+ff92e: 50                 push    ax
+ff92f: ff 06 70 0f        inc     word ptr [0F70h]
+ff933: 83 3e 70 0f 05     cmp     word ptr [0F70h],5h
+ff938: 7f 0d              jg      0FF947h
+ff93a: c6 06 01 10 19     mov     byte ptr [1001h],19h
+ff93f: b9 02 00           mov     cx,2h
+ff942: e8 ce 00           call    0FFA13h
+ff945: eb 04              jmp     0FF94Bh
+ff947: e8 28 03           call    0FFC72h
+ff94a: f9                 stc     
+ff94b: 58                 pop     ax
+ff94c: c3                 ret     
+ff94d: 9c                 pushf   
+ff94e: 51                 push    cx
+ff94f: 52                 push    dx
+ff950: ba 62 00           mov     dx,62h
+ff953: 32 ed              xor     ch,ch
+ff955: 2e 8a 0c           mov     cl,cs:[si]
+ff958: 46                 inc     si
+ff959: 2e 8a 04           mov     al,cs:[si]
+ff95c: ee                 out     dx,al
+ff95d: e2 f9              loop    0FF958h
+ff95f: 5a                 pop     dx
+ff960: 59                 pop     cx
+ff961: 9d                 popf    
+ff962: c3                 ret     
+ff963: b0 56              mov     al,56h
+ff965: e6 46              out     46h,al
+ff967: b0 04              mov     al,4h
+ff969: e6 42              out     42h,al
+ff96b: be a6 07           mov     si,7A6h
+ff96e: e8 dc ff           call    0FF94Dh
+ff971: e4 62              in      al,62h
+ff973: 24 c7              and     al,0C7h
+ff975: 34 44              xor     al,44h
+ff977: 74 05              je      0FF97Eh
+ff979: b0 a3              mov     al,0A3h
+ff97b: eb 38              jmp     0FF9B5h
+ff97d: 90                 nop     
+ff97e: c7 06 70 0f 00 00  mov     word ptr [0F70h],0h
+ff984: e8 54 01           call    0FFADBh
+ff987: 72 2c              jb      0FF9B5h
+ff989: c6 06 01 10 bf     mov     byte ptr [1001h],0BFh
+ff98e: a0 53 0f           mov     al,[0F53h]
+ff991: a2 02 10           mov     [1002h],al
+ff994: b9 03 00           mov     cx,3h
+ff997: e8 79 00           call    0FFA13h
+ff99a: 72 0e              jb      0FF9AAh
+ff99c: e8 18 00           call    0FF9B7h
+ff99f: 72 09              jb      0FF9AAh
+ff9a1: 80 3e 01 10 33     cmp     byte ptr [1001h],33h
+ff9a6: 74 0e              je      0FF9B6h
+ff9a8: b0 b0              mov     al,0B0h
+ff9aa: ff 06 70 0f        inc     word ptr [0F70h]
+ff9ae: 83 3e 70 0f 05     cmp     word ptr [0F70h],5h
+ff9b3: 7e e7              jle     0FF99Ch
+ff9b5: f9                 stc     
+ff9b6: c3                 ret     
+ff9b7: b9 f0 02           mov     cx,2F0h
+ff9ba: b0 40              mov     al,40h
+ff9bc: e8 d9 02           call    0FFC98h
+ff9bf: 72 44              jb      0FFA05h
+ff9c1: be b1 07           mov     si,7B1h
+ff9c4: e8 86 ff           call    0FF94Dh
+ff9c7: b0 c6              mov     al,0C6h
+ff9c9: e6 08              out     8h,al
+ff9cb: c7 06 72 0f 0f 00  mov     word ptr [0F72h],0Fh
+ff9d1: ba 62 00           mov     dx,62h
+ff9d4: b3 80              mov     bl,80h
+ff9d6: b9 ff ff           mov     cx,0FFFFh
+ff9d9: b0 01              mov     al,1h
+ff9db: ee                 out     dx,al
+ff9dc: ec                 in      al,dx
+ff9dd: 84 c3              test    bl,al
+ff9df: 75 0c              jne     0FF9EDh
+ff9e1: e2 f6              loop    0FF9D9h
+ff9e3: ff 0e 72 0f        dec     word ptr [0F72h]
+ff9e7: 75 ed              jne     0FF9D6h
+ff9e9: b0 b6              mov     al,0B6h
+ff9eb: eb 18              jmp     0FFA05h
+ff9ed: a8 60              test    al,60h
+ff9ef: b0 b5              mov     al,0B5h
+ff9f1: 75 12              jne     0FFA05h
+ff9f3: e4 03              in      al,3h
+ff9f5: 8a d8              mov     bl,al
+ff9f7: e4 03              in      al,3h
+ff9f9: 24 3f              and     al,3Fh
+ff9fb: 8a f8              mov     bh,al
+ff9fd: 43                 inc     bx
+ff9fe: b9 f0 02           mov     cx,2F0h
+ffa01: 2b cb              sub     cx,bx
+ffa03: eb 01              jmp     0FFA06h
+ffa05: f9                 stc     
+ffa06: 50                 push    ax
+ffa07: b0 84              mov     al,84h
+ffa09: e6 08              out     8h,al
+ffa0b: be c1 07           mov     si,7C1h
+ffa0e: e8 3c ff           call    0FF94Dh
+ffa11: 58                 pop     ax
+ffa12: c3                 ret     
+ffa13: b0 80              mov     al,80h
+ffa15: e8 80 02           call    0FFC98h
+ffa18: 72 53              jb      0FFA6Dh
+ffa1a: ba 62 00           mov     dx,62h
+ffa1d: b9 00 10           mov     cx,1000h
+ffa20: b0 10              mov     al,10h
+ffa22: ee                 out     dx,al
+ffa23: ec                 in      al,dx
+ffa24: a8 08              test    al,8h
+ffa26: 74 07              je      0FFA2Fh
+ffa28: e2 f6              loop    0FFA20h
+ffa2a: b0 b8              mov     al,0B8h
+ffa2c: eb 3f              jmp     0FFA6Dh
+ffa2e: 90                 nop     
+ffa2f: b9 fa 00           mov     cx,0FAh
+ffa32: e2 fe              loop    0FFA32h
+ffa34: be c6 07           mov     si,7C6h
+ffa37: e8 13 ff           call    0FF94Dh
+ffa3a: b0 c6              mov     al,0C6h
+ffa3c: e6 08              out     8h,al
+ffa3e: a0 76 0f           mov     al,[0F76h]
+ffa41: e6 60              out     60h,al
+ffa43: b0 c0              mov     al,0C0h
+ffa45: ee                 out     dx,al
+ffa46: b9 00 10           mov     cx,1000h
+ffa49: e4 03              in      al,3h
+ffa4b: 8a d8              mov     bl,al
+ffa4d: e4 03              in      al,3h
+ffa4f: 0c c0              or      al,0C0h
+ffa51: 8a f8              mov     bh,al
+ffa53: 43                 inc     bx
+ffa54: 74 02              je      0FFA58h
+ffa56: e2 f1              loop    0FFA49h
+ffa58: b9 28 00           mov     cx,28h
+ffa5b: e2 fe              loop    0FFA5Bh
+ffa5d: be cb 07           mov     si,7CBh
+ffa60: e8 ea fe           call    0FF94Dh
+ffa63: b0 84              mov     al,84h
+ffa65: e6 08              out     8h,al
+ffa67: 0b db              or      bx,bx
+ffa69: 74 05              je      0FFA70h
+ffa6b: b0 b7              mov     al,0B7h
+ffa6d: f9                 stc     
+ffa6e: eb 01              jmp     0FFA71h
+ffa70: f8                 clc     
+ffa71: c3                 ret     
+ffa72: b0 40              mov     al,40h
+ffa74: b9 f0 02           mov     cx,2F0h
+ffa77: e8 1e 02           call    0FFC98h
+ffa7a: 72 42              jb      0FFABEh
+ffa7c: be b9 07           mov     si,7B9h
+ffa7f: e8 cb fe           call    0FF94Dh
+ffa82: b0 c6              mov     al,0C6h
+ffa84: e6 08              out     8h,al
+ffa86: ba 62 00           mov     dx,62h
+ffa89: b9 ff ff           mov     cx,0FFFFh
+ffa8c: b3 80              mov     bl,80h
+ffa8e: b0 01              mov     al,1h
+ffa90: ee                 out     dx,al
+ffa91: ec                 in      al,dx
+ffa92: 84 c3              test    bl,al
+ffa94: 75 1a              jne     0FFAB0h
+ffa96: e4 03              in      al,3h
+ffa98: 8a d8              mov     bl,al
+ffa9a: e4 03              in      al,3h
+ffa9c: 8a f8              mov     bh,al
+ffa9e: 43                 inc     bx
+ffa9f: 74 1a              je      0FFABBh
+ffaa1: e2 e9              loop    0FFA8Ch
+ffaa3: b0 ab              mov     al,0ABh
+ffaa5: 80 3e 7e 0f 00     cmp     byte ptr [0F7Eh],0h
+ffaaa: 74 12              je      0FFABEh
+ffaac: b0 a2              mov     al,0A2h
+ffaae: eb 0e              jmp     0FFABEh
+ffab0: c6 06 7e 0f 00     mov     byte ptr [0F7Eh],0h
+ffab5: a8 40              test    al,40h
+ffab7: b0 b5              mov     al,0B5h
+ffab9: 75 03              jne     0FFABEh
+ffabb: f8                 clc     
+ffabc: eb 01              jmp     0FFABFh
+ffabe: f9                 stc     
+ffabf: 50                 push    ax
+ffac0: e4 03              in      al,3h
+ffac2: 8a d8              mov     bl,al
+ffac4: e4 03              in      al,3h
+ffac6: 24 3f              and     al,3Fh
+ffac8: 8a f8              mov     bh,al
+ffaca: b9 f0 02           mov     cx,2F0h
+ffacd: 2b cb              sub     cx,bx
+ffacf: b0 c6              mov     al,0C6h
+ffad1: e6 08              out     8h,al
+ffad3: be c1 07           mov     si,7C1h
+ffad6: e8 74 fe           call    0FF94Dh
+ffad9: 58                 pop     ax
+ffada: c3                 ret     
+ffadb: c6 06 82 0f 00     mov     byte ptr [0F82h],0h
+ffae0: fc                 cld     
+ffae1: b9 0f 00           mov     cx,0Fh
+ffae4: 1e                 push    ds 
+ffae5: 07                 pop     es 
+ffae6: 33 c0              xor     ax,ax
+ffae8: 8d 3e 83 0f        lea     di,[0F83h]
+ffaec: f2 aa              repne   stosb   
+ffaee: 80 3e 82 0f ff     cmp     byte ptr [0F82h],0FFh
+ffaf3: b0 aa              mov     al,0AAh
+ffaf5: 74 16              je      0FFB0Dh
+ffaf7: fe 06 82 0f        inc     byte ptr [0F82h]
+ffafb: c7 06 80 0f d0 07  mov     word ptr [0F80h],7D0h
+ffb01: b9 05 00           mov     cx,5h
+ffb04: 51                 push    cx
+ffb05: e8 6a ff           call    0FFA72h
+ffb08: 59                 pop     cx
+ffb09: 73 05              jae     0FFB10h
+ffb0b: e2 f7              loop    0FFB04h
+ffb0d: e9 9f 00           jmp     0FFBAFh
+ffb10: 32 ff              xor     bh,bh
+ffb12: 8a 1e 00 10        mov     bl,[1000h]
+ffb16: 22 db              and     bl,bl
+ffb18: 74 e7              je      0FFB01h
+ffb1a: f6 c3 f0           test    bl,0F0h
+ffb1d: 75 e2              jne     0FFB01h
+ffb1f: 88 1e 77 0f        mov     [0F77h],bl
+ffb23: 88 1e 76 0f        mov     [0F76h],bl
+ffb27: 4b                 dec     bx
+ffb28: 80 3e 01 10 93     cmp     byte ptr [1001h],93h
+ffb2d: 74 0d              je      0FFB3Ch
+ffb2f: ff 0e 80 0f        dec     word ptr [0F80h]
+ffb33: 74 78              je      0FFBADh
+ffb35: c6 87 83 0f 00     mov     byte ptr [bx+0F83h],0h
+ffb3a: eb c5              jmp     0FFB01h
+ffb3c: c7 06 80 0f d0 07  mov     word ptr [0F80h],7D0h
+ffb42: fe 87 83 0f        inc     byte ptr [bx+0F83h]
+ffb46: 80 bf 83 0f 03     cmp     byte ptr [bx+0F83h],3h
+ffb4b: 75 b4              jne     0FFB01h
+ffb4d: c6 06 01 10 17     mov     byte ptr [1001h],17h
+ffb52: b9 02 00           mov     cx,2h
+ffb55: e8 59 00           call    0FFBB1h
+ffb58: a0 00 10           mov     al,[1000h]
+ffb5b: 72 15              jb      0FFB72h
+ffb5d: e8 12 ff           call    0FFA72h
+ffb60: 72 4d              jb      0FFBAFh
+ffb62: a0 77 0f           mov     al,[0F77h]
+ffb65: 3a 06 00 10        cmp     al,[1000h]
+ffb69: 75 07              jne     0FFB72h
+ffb6b: 80 3e 01 10 17     cmp     byte ptr [1001h],17h
+ffb70: 74 2e              je      0FFBA0h
+ffb72: fe c8              dec     al
+ffb74: 8a d8              mov     bl,al
+ffb76: 80 3e 82 0f ff     cmp     byte ptr [0F82h],0FFh
+ffb7b: b0 aa              mov     al,0AAh
+ffb7d: 74 30              je      0FFBAFh
+ffb7f: fe 06 82 0f        inc     byte ptr [0F82h]
+ffb83: 32 ff              xor     bh,bh
+ffb85: c6 87 83 0f 00     mov     byte ptr [bx+0F83h],0h
+ffb8a: b9 0f 00           mov     cx,0Fh
+ffb8d: 33 db              xor     bx,bx
+ffb8f: f6 87 83 0f ff     test    byte ptr [bx+0F83h],0FFh
+ffb94: 74 04              je      0FFB9Ah
+ffb96: fe 8f 83 0f        dec     byte ptr [bx+0F83h]
+ffb9a: 43                 inc     bx
+ffb9b: e2 f2              loop    0FFB8Fh
+ffb9d: e9 40 ff           jmp     0FFAE0h
+ffba0: ba 62 00           mov     dx,62h
+ffba3: b8 06 00           mov     ax,6h
+ffba6: ee                 out     dx,al
+ffba7: a0 77 0f           mov     al,[0F77h]
+ffbaa: ee                 out     dx,al
+ffbab: f8                 clc     
+ffbac: c3                 ret     
+ffbad: b0 a9              mov     al,0A9h
+ffbaf: f9                 stc     
+ffbb0: c3                 ret     
+ffbb1: b0 80              mov     al,80h
+ffbb3: e8 e2 00           call    0FFC98h
+ffbb6: 73 03              jae     0FFBBBh
+ffbb8: eb 68              jmp     0FFC22h
+ffbba: 90                 nop     
+ffbbb: b9 00 10           mov     cx,1000h
+ffbbe: ba 62 00           mov     dx,62h
+ffbc1: b0 10              mov     al,10h
+ffbc3: ee                 out     dx,al
+ffbc4: ec                 in      al,dx
+ffbc5: a8 08              test    al,8h
+ffbc7: 74 07              je      0FFBD0h
+ffbc9: e2 f6              loop    0FFBC1h
+ffbcb: b0 b8              mov     al,0B8h
+ffbcd: eb 53              jmp     0FFC22h
+ffbcf: 90                 nop     
+ffbd0: b0 80              mov     al,80h
+ffbd2: e6 46              out     46h,al
+ffbd4: e4 44              in      al,44h
+ffbd6: 8a c8              mov     cl,al
+ffbd8: e4 44              in      al,44h
+ffbda: 81 e1 3f 00        and     cx,3Fh
+ffbde: b8 08 00           mov     ax,8h
+ffbe1: f6 e1              mul     cl
+ffbe3: 8b c8              mov     cx,ax
+ffbe5: 41                 inc     cx
+ffbe6: b0 10              mov     al,10h
+ffbe8: ee                 out     dx,al
+ffbe9: ec                 in      al,dx
+ffbea: a8 08              test    al,8h
+ffbec: 75 34              jne     0FFC22h
+ffbee: e2 f6              loop    0FFBE6h
+ffbf0: be c6 07           mov     si,7C6h
+ffbf3: e8 57 fd           call    0FF94Dh
+ffbf6: b0 c6              mov     al,0C6h
+ffbf8: e6 08              out     8h,al
+ffbfa: a0 76 0f           mov     al,[0F76h]
+ffbfd: e6 60              out     60h,al
+ffbff: b0 c0              mov     al,0C0h
+ffc01: ee                 out     dx,al
+ffc02: e4 03              in      al,3h
+ffc04: 8a d8              mov     bl,al
+ffc06: e4 03              in      al,3h
+ffc08: 0c c0              or      al,0C0h
+ffc0a: 8a f8              mov     bh,al
+ffc0c: 43                 inc     bx
+ffc0d: 74 02              je      0FFC11h
+ffc0f: e2 f1              loop    0FFC02h
+ffc11: b9 28 00           mov     cx,28h
+ffc14: e2 fe              loop    0FFC14h
+ffc16: be cb 07           mov     si,7CBh
+ffc19: e8 31 fd           call    0FF94Dh
+ffc1c: 0b db              or      bx,bx
+ffc1e: 74 05              je      0FFC25h
+ffc20: b0 b7              mov     al,0B7h
+ffc22: f9                 stc     
+ffc23: eb 01              jmp     0FFC26h
+ffc25: f8                 clc     
+ffc26: c3                 ret     
+ffc27: 06                 push    es 
+ffc28: 1e                 push    ds 
+ffc29: a3 04 10           mov     [1004h],ax
+ffc2c: c7 06 02 10 00 00  mov     word ptr [1002h],0h
+ffc32: 8d 3e 06 10        lea     di,[1006h]
+ffc36: 1e                 push    ds 
+ffc37: 07                 pop     es 
+ffc38: 8e d8              mov     ds,ax
+ffc3a: 33 f6              xor     si,si
+ffc3c: b9 00 02           mov     cx,200h
+ffc3f: fc                 cld     
+ffc40: f3 a4              rep     movsb   
+ffc42: b9 06 02           mov     cx,206h
+ffc45: 1f                 pop     ds 
+ffc46: 07                 pop     es 
+ffc47: c3                 ret     
+ffc48: 06                 push    es 
+ffc49: 8b 3e 02 10        mov     di,[1002h]
+ffc4d: a1 04 10           mov     ax,[1004h]
+ffc50: 8e c0              mov     es,ax
+ffc52: be 06 10           mov     si,1006h
+ffc55: 83 e9 08           sub     cx,8h
+ffc58: 89 0e 79 0f        mov     [0F79h],cx
+ffc5c: 74 12              je      0FFC70h
+ffc5e: 7c 0d              jl      0FFC6Dh
+ffc60: 8c c0              mov     ax,es
+ffc62: 05 80 01           add     ax,180h
+ffc65: 8e c0              mov     es,ax
+ffc67: fc                 cld     
+ffc68: f3 a4              rep     movsb   
+ffc6a: f8                 clc     
+ffc6b: eb 03              jmp     0FFC70h
+ffc6d: b0 b9              mov     al,0B9h
+ffc6f: f9                 stc     
+ffc70: 07                 pop     es 
+ffc71: c3                 ret     
+ffc72: c6 06 01 10 53     mov     byte ptr [1001h],53h
+ffc77: b9 02 00           mov     cx,2h
+ffc7a: e8 96 fd           call    0FFA13h
+ffc7d: 72 18              jb      0FFC97h
+ffc7f: e8 35 fd           call    0FF9B7h
+ffc82: 80 3e 01 10 53     cmp     byte ptr [1001h],53h
+ffc87: 75 0d              jne     0FFC96h
+ffc89: c6 06 01 10 73     mov     byte ptr [1001h],73h
+ffc8e: b9 02 00           mov     cx,2h
+ffc91: e8 7f fd           call    0FFA13h
+ffc94: eb 01              jmp     0FFC97h
+ffc96: f9                 stc     
+ffc97: c3                 ret     
+ffc98: ba 00 10           mov     dx,1000h
+ffc9b: 3c 80              cmp     al,80h
+ffc9d: 75 02              jne     0FFCA1h
+ffc9f: 42                 inc     dx
+ffca0: 49                 dec     cx
+ffca1: 49                 dec     cx
+ffca2: 50                 push    ax
+ffca3: 8a c2              mov     al,dl
+ffca5: e6 02              out     2h,al
+ffca7: 8a c6              mov     al,dh
+ffca9: e6 02              out     2h,al
+ffcab: 8a c1              mov     al,cl
+ffcad: e6 03              out     3h,al
+ffcaf: 58                 pop     ax
+ffcb0: 0a c5              or      al,ch
+ffcb2: e6 03              out     3h,al
+ffcb4: e4 02              in      al,2h
+ffcb6: 8a d8              mov     bl,al
+ffcb8: e4 02              in      al,2h
+ffcba: 8a e0              mov     ah,al
+ffcbc: 8a c3              mov     al,bl
+ffcbe: 3b c2              cmp     ax,dx
+ffcc0: 75 11              jne     0FFCD3h
+ffcc2: e4 03              in      al,3h
+ffcc4: 8a d8              mov     bl,al
+ffcc6: e4 03              in      al,3h
+ffcc8: 24 3f              and     al,3Fh
+ffcca: 8a e0              mov     ah,al
+ffccc: 8a c3              mov     al,bl
+ffcce: f8                 clc     
+ffccf: 3b c1              cmp     ax,cx
+ffcd1: 74 03              je      0FFCD6h
+ffcd3: b0 ba              mov     al,0BAh
+ffcd5: f9                 stc     
+ffcd6: c3                 ret     
+ffcd7: 06                 push    es 
+ffcd8: 52                 push    dx
+ffcd9: 8b d8              mov     bx,ax
+ffcdb: b9 00 01           mov     cx,100h
+ffcde: 33 c0              xor     ax,ax
+ffce0: bf 00 18           mov     di,1800h
+ffce3: 8e c0              mov     es,ax
+ffce5: ba 00 00           mov     dx,0h
+ffce8: 26 03 05           add     ax,es:[di]
+ffceb: 47                 inc     di
+ffcec: 47                 inc     di
+ffced: e0 f9              loopne  0FFCE8h
+ffcef: b9 00 01           mov     cx,100h
+ffcf2: 4b                 dec     bx
+ffcf3: 74 0b              je      0FFD00h
+ffcf5: 23 ff              and     di,di
+ffcf7: 75 ef              jne     0FFCE8h
+ffcf9: 80 c6 10           add     dh,10h
+ffcfc: 52                 push    dx
+ffcfd: 07                 pop     es 
+ffcfe: eb e8              jmp     0FFCE8h
+ffd00: 3d ff ff           cmp     ax,0FFFFh
+ffd03: 74 03              je      0FFD08h
+ffd05: b0 b4              mov     al,0B4h
+ffd07: f9                 stc     
+ffd08: 5a                 pop     dx
+ffd09: 07                 pop     es 
+ffd0a: c3                 ret     
+ffd0b: 06                 push    es 
+ffd0c: 33 c0              xor     ax,ax
+ffd0e: 8e c0              mov     es,ax
+ffd10: a1 14 18           mov     ax,[1814h]
+ffd13: a3 00 0f           mov     [0F00h],ax
+ffd16: a1 16 18           mov     ax,[1816h]
+ffd19: a3 02 0f           mov     [0F02h],ax
+ffd1c: 07                 pop     es 
+ffd1d: c3                 ret     
+ffd1e: 50                 push    ax
+ffd1f: a1 04 18           mov     ax,[1804h]
+ffd22: 50                 push    ax
+ffd23: a1 5e 0f           mov     ax,[0F5Eh]
+ffd26: 2d 10 00           sub     ax,10h
+ffd29: 36 a3 06 0f        mov     ss:[0F06h],ax
+ffd2d: 8b e8              mov     bp,ax
+ffd2f: 2d 10 00           sub     ax,10h
+ffd32: 8b d0              mov     dx,ax
+ffd34: 33 db              xor     bx,bx
+ffd36: 8e db              mov     ds,bx
+ffd38: 8e c5              mov     es,bp
+ffd3a: 33 ff              xor     di,di
+ffd3c: 36 8d 36 10 0f     lea     si,ss:[0F10h]
+ffd41: b9 21 00           mov     cx,21h
+ffd44: fc                 cld     
+ffd45: f3 a5              rep     movsw   
+ffd47: be 00 0f           mov     si,0F00h
+ffd4a: 8e c0              mov     es,ax
+ffd4c: 33 ff              xor     di,di
+ffd4e: b9 08 00           mov     cx,8h
+ffd51: fc                 cld     
+ffd52: f3 a5              rep     movsw   
+ffd54: 5b                 pop     bx
+ffd55: b1 05              mov     cl,5h
+ffd57: d3 e3              shl     bx,cl
+ffd59: 58                 pop     ax
+ffd5a: 2b d8              sub     bx,ax
+ffd5c: 05 80 01           add     ax,180h
+ffd5f: 8e d8              mov     ds,ax
+ffd61: 33 ff              xor     di,di
+ffd63: 33 f6              xor     si,si
+ffd65: 8e c7              mov     es,di
+ffd67: 8b cb              mov     cx,bx
+ffd69: 81 f9 00 10        cmp     cx,1000h
+ffd6d: 72 03              jb      0FFD72h
+ffd6f: b9 00 10           mov     cx,1000h
+ffd72: 2b d9              sub     bx,cx
+ffd74: d1 e1              shl     cx,1
+ffd76: d1 e1              shl     cx,1
+ffd78: d1 e1              shl     cx,1
+ffd7a: fc                 cld     
+ffd7b: f3 a5              rep     movsw   
+ffd7d: 23 db              and     bx,bx
+ffd7f: 74 10              je      0FFD91h
+ffd81: 8c d8              mov     ax,ds
+ffd83: 80 c4 10           add     ah,10h
+ffd86: 8e d8              mov     ds,ax
+ffd88: 8c c0              mov     ax,es
+ffd8a: 80 c4 10           add     ah,10h
+ffd8d: 8e c0              mov     es,ax
+ffd8f: eb d6              jmp     0FFD67h
+ffd91: 8e db              mov     ds,bx
+ffd93: 36 89 16 fe 01     mov     ss:[1FEh],dx
+ffd98: 8e d2              mov     ss,dx
+ffd9a: bc 00 02           mov     sp,200h
+ffd9d: e8 8f f8           call    0FF62Fh
+ffda0: 8e da              mov     ds,dx
+ffda2: 83 3e 40 01 00     cmp     word ptr [140h],0h
+ffda7: 74 02              je      0FFDABh
+ffda9: cd 7c              int     7Ch
+ffdab: ff 2e 00 00        jmp     far ptr  [0h]
+ffdaf: c3                 ret     
+ffdb0: 06                 push    es 
+ffdb1: 52                 push    dx
+ffdb2: 33 c0              xor     ax,ax
+ffdb4: 8e c0              mov     es,ax
+ffdb6: bf 02 00           mov     di,2h
+ffdb9: 33 db              xor     bx,bx
+ffdbb: b9 00 10           mov     cx,1000h
+ffdbe: 26 03 07           add     ax,es:[bx]
+ffdc1: 26 03 47 0d        add     ax,es:[bx+0Dh]
+ffdc5: 83 c3 10           add     bx,10h
+ffdc8: e2 f4              loop    0FFDBEh
+ffdca: 8c c2              mov     dx,es
+ffdcc: 80 c6 10           add     dh,10h
+ffdcf: 8e c2              mov     es,dx
+ffdd1: 4f                 dec     di
+ffdd2: 75 e5              jne     0FFDB9h
+ffdd4: 8b d0              mov     dx,ax
+ffdd6: b0 80              mov     al,80h
+ffdd8: e6 46              out     46h,al
+ffdda: e4 44              in      al,44h
+ffddc: 8a d8              mov     bl,al
+ffdde: e4 44              in      al,44h
+ffde0: 8a f8              mov     bh,al
+ffde2: 03 da              add     bx,dx
+ffde4: 8a c3              mov     al,bl
+ffde6: e6 44              out     44h,al
+ffde8: 8a c7              mov     al,bh
+ffdea: e6 44              out     44h,al
+ffdec: 5a                 pop     dx
+ffded: 07                 pop     es 
+ffdee: c3                 ret     
+ffdef: b0 b0              mov     al,0B0h               ; timer interrupt
+ffdf1: e6 46              out     46h,al
+ffdf3: b0 ff              mov     al,0FFh
+ffdf5: e6 44              out     44h,al
+ffdf7: e6 44              out     44h,al
+ffdf9: ff e5              jmp     bp
+ffdfb: b9 ff 7f           mov     cx,7FFFh
+ffdfe: b0 10              mov     al,10h
+ffe00: e6 62              out     62h,al
+ffe02: e4 62              in      al,62h
+ffe04: a8 08              test    al,8h
+ffe06: 75 05              jne     0FFE0Dh
+ffe08: e2 f4              loop    0FFDFEh
+ffe0a: eb 09              jmp     0FFE15h
+ffe0c: 90                 nop     
+ffe0d: b2 f9              mov     dl,0F9h
+ffe0f: e8 58 01           call    0FFF6Ah
+ffe12: e9 47 01           jmp     0FFF5Ch
+ffe15: b0 56              mov     al,56h
+ffe17: e6 46              out     46h,al
+ffe19: b0 20              mov     al,20h
+ffe1b: e6 42              out     42h,al
+ffe1d: be d0 07           mov     si,7D0h
+ffe20: e8 2a fb           call    0FF94Dh
+ffe23: e4 62              in      al,62h
+ffe25: 24 4f              and     al,4Fh
+ffe27: 3c 44              cmp     al,44h
+ffe29: 74 08              je      0FFE33h
+ffe2b: b2 f0              mov     dl,0F0h
+ffe2d: e8 3a 01           call    0FFF6Ah
+ffe30: e9 29 01           jmp     0FFF5Ch
+ffe33: be e0 07           mov     si,7E0h
+ffe36: e8 14 fb           call    0FF94Dh
+ffe39: e4 62              in      al,62h
+ffe3b: 24 28              and     al,28h
+ffe3d: 3c 28              cmp     al,28h
+ffe3f: 74 08              je      0FFE49h
+ffe41: b2 f1              mov     dl,0F1h
+ffe43: e8 24 01           call    0FFF6Ah
+ffe46: e9 13 01           jmp     0FFF5Ch
+ffe49: b9 ff 00           mov     cx,0FFh
+ffe4c: be e4 07           mov     si,7E4h
+ffe4f: e8 fb fa           call    0FF94Dh
+ffe52: e4 62              in      al,62h
+ffe54: 24 08              and     al,8h
+ffe56: 74 0a              je      0FFE62h
+ffe58: e2 f8              loop    0FFE52h
+ffe5a: b2 f2              mov     dl,0F2h
+ffe5c: e8 0b 01           call    0FFF6Ah
+ffe5f: e9 fa 00           jmp     0FFF5Ch
+ffe62: 33 c0              xor     ax,ax
+ffe64: 8e c0              mov     es,ax
+ffe66: bf 00 10           mov     di,1000h
+ffe69: b9 00 01           mov     cx,100h
+ffe6c: aa                 stosb   
+ffe6d: fe c0              inc     al
+ffe6f: e2 fb              loop    0FFE6Ch
+ffe71: b0 3c              mov     al,3Ch
+ffe73: aa                 stosb   
+ffe74: b0 c0              mov     al,0C0h
+ffe76: aa                 stosb   
+ffe77: b9 00 01           mov     cx,100h
+ffe7a: b0 80              mov     al,80h
+ffe7c: e8 19 fe           call    0FFC98h
+ffe7f: be a6 07           mov     si,7A6h
+ffe82: e8 c8 fa           call    0FF94Dh
+ffe85: be b9 07           mov     si,7B9h
+ffe88: e8 c2 fa           call    0FF94Dh
+ffe8b: be c6 07           mov     si,7C6h
+ffe8e: e8 bc fa           call    0FF94Dh
+ffe91: b0 c6              mov     al,0C6h
+ffe93: e6 08              out     8h,al
+ffe95: 33 c0              xor     ax,ax
+ffe97: e6 60              out     60h,al
+ffe99: b0 c0              mov     al,0C0h
+ffe9b: e6 62              out     62h,al
+ffe9d: b9 02 01           mov     cx,102h
+ffea0: bf 00 10           mov     di,1000h
+ffea3: ba 00 01           mov     dx,100h
+ffea6: e4 62              in      al,62h
+ffea8: a8 01              test    al,1h
+ffeaa: 75 0b              jne     0FFEB7h
+ffeac: 4a                 dec     dx
+ffead: 75 f7              jne     0FFEA6h
+ffeaf: b2 f3              mov     dl,0F3h
+ffeb1: e8 b6 00           call    0FFF6Ah
+ffeb4: e9 a5 00           jmp     0FFF5Ch
+ffeb7: e4 60              in      al,60h
+ffeb9: 26 8a 25           mov     ah,es:[di]
+ffebc: 3a c4              cmp     al,ah
+ffebe: 74 08              je      0FFEC8h
+ffec0: b2 f4              mov     dl,0F4h
+ffec2: e8 a5 00           call    0FFF6Ah
+ffec5: e9 94 00           jmp     0FFF5Ch
+ffec8: 47                 inc     di
+ffec9: e2 d8              loop    0FFEA3h
+ffecb: b0 01              mov     al,1h
+ffecd: e6 62              out     62h,al
+ffecf: e4 62              in      al,62h
+ffed1: 24 60              and     al,60h
+ffed3: 22 c0              and     al,al
+ffed5: 74 08              je      0FFEDFh
+ffed7: b2 f5              mov     dl,0F5h
+ffed9: e8 8e 00           call    0FFF6Ah
+ffedc: eb 7e              jmp     0FFF5Ch
+ffede: 90                 nop     
+ffedf: 33 c0              xor     ax,ax
+ffee1: b0 ff              mov     al,0FFh
+ffee3: b9 00 01           mov     cx,100h
+ffee6: bf 00 10           mov     di,1000h
+ffee9: f3 aa              rep     stosb   
+ffeeb: be a6 07           mov     si,7A6h
+ffeee: e8 5c fa           call    0FF94Dh
+ffef1: be c6 07           mov     si,7C6h
+ffef4: e8 56 fa           call    0FF94Dh
+ffef7: be b9 07           mov     si,7B9h
+ffefa: e8 50 fa           call    0FF94Dh
+ffefd: b9 02 01           mov     cx,102h
+fff00: b0 40              mov     al,40h
+fff02: e8 93 fd           call    0FFC98h
+fff05: b0 c6              mov     al,0C6h
+fff07: e6 08              out     8h,al
+fff09: 8a c4              mov     al,ah
+fff0b: e6 60              out     60h,al
+fff0d: b0 c0              mov     al,0C0h
+fff0f: e6 62              out     62h,al
+fff11: b9 00 01           mov     cx,100h
+fff14: ba ff 00           mov     dx,0FFh
+fff17: e4 62              in      al,62h
+fff19: a8 04              test    al,4h
+fff1b: 75 0b              jne     0FFF28h
+fff1d: 4a                 dec     dx
+fff1e: 75 f7              jne     0FFF17h
+fff20: b2 f6              mov     dl,0F6h
+fff22: e8 45 00           call    0FFF6Ah
+fff25: eb 35              jmp     0FFF5Ch
+fff27: 90                 nop     
+fff28: fe c4              inc     ah
+fff2a: 8a c4              mov     al,ah
+fff2c: e6 60              out     60h,al
+fff2e: e2 e4              loop    0FFF14h
+fff30: ba ff 00           mov     dx,0FFh
+fff33: b0 01              mov     al,1h
+fff35: e6 62              out     62h,al
+fff37: e4 62              in      al,62h
+fff39: a8 80              test    al,80h
+fff3b: 75 0b              jne     0FFF48h
+fff3d: 4a                 dec     dx
+fff3e: 75 f3              jne     0FFF33h
+fff40: b2 f7              mov     dl,0F7h
+fff42: e8 25 00           call    0FFF6Ah
+fff45: eb 15              jmp     0FFF5Ch
+fff47: 90                 nop     
+fff48: b4 01              mov     ah,1h
+fff4a: b9 ff 00           mov     cx,0FFh
+fff4d: bf 00 10           mov     di,1000h
+fff50: 26 8a 05           mov     al,es:[di]
+fff53: 3a e0              cmp     ah,al
+fff55: 75 0c              jne     0FFF63h
+fff57: 47                 inc     di
+fff58: fe c4              inc     ah
+fff5a: e2 f4              loop    0FFF50h
+fff5c: be a6 07           mov     si,7A6h
+fff5f: e8 eb f9           call    0FF94Dh
+fff62: c3                 ret     
+fff63: b2 f8              mov     dl,0F8h
+fff65: e8 02 00           call    0FFF6Ah
+fff68: eb f2              jmp     0FFF5Ch
+fff6a: b8 bf 01           mov     ax,1BFh
+fff6d: e8 73 f3           call    0FF2E3h
+fff70: e8 7f f4           call    0FF3F2h
+fff73: e8 19 f4           call    0FF38Fh
+fff76: c3                 ret     
+fff77: 36 a2 52 0f        mov     ss:[0F52h],al
+fff7b: c3                 ret     
+fff7c: ff ff              ???     
+fff7e: ff ff              ???     
+fff80: ff ff              ???     
+fff82: ff ff              ???     
+fff84: ff ff              ???     
+fff86: ff ff              ???     
+fff88: ff ff              ???     
+fff8a: ff ff              ???     
+fff8c: ff ff              ???     
+fff8e: ff ff              ???     
+fff90: ff ff              ???     
+fff92: ff ff              ???     
+fff94: ff ff              ???     
+fff96: ff ff              ???     
+fff98: ff ff              ???     
+fff9a: ff ff              ???     
+fff9c: ff ff              ???     
+fff9e: ff ff              ???     
+fffa0: ff ff              ???     
+fffa2: ff ff              ???     
+fffa4: ff ff              ???     
+fffa6: ff ff              ???     
+fffa8: ff ff              ???     
+fffaa: ff ff              ???     
+fffac: ff ff              ???     
+fffae: ff ff              ???     
+fffb0: ff ff              ???     
+fffb2: ff ff              ???     
+fffb4: ff ff              ???     
+fffb6: ff ff              ???     
+fffb8: ff ff              ???     
+fffba: ff ff              ???     
+fffbc: ff ff              ???     
+fffbe: ff ff              ???     
+fffc0: ff ff              ???     
+fffc2: ff ff              ???     
+fffc4: ff ff              ???     
+fffc6: ff ff              ???     
+fffc8: ff ff              ???     
+fffca: ff ff              ???     
+fffcc: ff ff              ???     
+fffce: ff ff              ???     
+fffd0: ff ff              ???     
+fffd2: ff ff              ???     
+fffd4: ff ff              ???     
+fffd6: ff ff              ???     
+fffd8: ff ff              ???     
+fffda: ff ff              ???     
+fffdc: ff ff              ???     
+fffde: ff ff              ???     
+fffe0: ff ff              ???     
+fffe2: ff ff              ???     
+fffe4: ff ff              ???     
+fffe6: ff ff              ???     
+fffe8: ff ff              ???     
+fffea: ff ff              ???     
+fffec: ff ff              ???     
+fffee: ff ff              ???     
+ffff0: ea 00 00 00 ff     jmp     0FF00h:0h                     ; entry point on reset
+ffff5: ff 82 00 4d        inc     word ptr [bp+si+4D00h]
+ffff9: ff 05              inc     word ptr [di]
+ffffb: 00 04              add     [si],al
+ffffd: 00 82 00 00        add     [bp+si],al
