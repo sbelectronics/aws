@@ -48,14 +48,89 @@ snd_delay2:	loop	snd_delay2
 		mov	bx, 0FF00h
 		mov	es:[000Ah], bx			; then segment
 
-;		sti					; enable parity if you dare
-;		in      al,0F0h 
+		cli					; turn off interrupts, for good measure...
+
+		;in	al,0F4h				; disable parity. It's automatically disabled on reset.
+
+							; XXX I think reading from ROM will generate parity errors.
+		;in      al,0F0h 			; enable parity if you dare. This uses NMI and is not maskable.
+
+kbd_setup:      xor     dx,dx                         ; setup the keyboard channel B for setting LEDS on the 7201, from BIOS
+                mov     al,18h
+                out     66h,al
+                mov     al,4h
+                out     66h,al
+                mov     al,0C4h
+                out     66h,al
+                mov     al,3h
+                out     66h,al
+                mov     al,0C1h
+                out     66h,al
+                mov     al,1h
+                out     66h,al
+                dec     ax
+                out     66h,al
+                mov     al,2h
+                out     62h,al
+                xor     al,al
+                out     62h,al
+                mov     al,5h
+                out     66h,al
+                mov     al,68h
+                out     66h,al
+                mov     al,92h
+                out     64h,al
+
+kbd_ledo:	mov al, 0b8h			; over type
+		out 64h, al
+		mov	cx, 0FFFFh
+led_delayo:	loop	led_delayo
+
+kbd_ledc:	mov al, 0b4h			; caps lock
+		out 64h, al
+		mov	cx, 0FFFFh
+led_delayc:	loop	led_delayc
+
+kbd_led0:	mov al, 0b2h			; F1
+		out 64h, al
+		mov	cx, 0FFFFh
+led_delay0:	loop	led_delay0
+
+kbd_led1:	mov al, 0b1h			; F2
+		out 64h, al
+		mov	cx, 0FFFFh
+led_delay1:	loop	led_delay1
+
+kbd_led2:	mov al, 0b0h			; turn off prior LEDs
+		out 64h, al
+		mov al, 0A8h			; F3
+		out 64h, al
+		mov	cx, 0FFFFh
+led_delay2:	loop	led_delay2
+
+kbd_led3:       mov al, 0A4h			; F7
+		out 64h, al
+		mov	cx, 0FFFFh
+led_delay3:	loop	led_delay3
+
+kbd_led4:       mov al, 0A2h			; F8
+		out 64h, al
+		mov	cx, 0FFFFh
+led_delay4:	loop	led_delay4
+
+kbd_led5:       mov al, 0A1h			; F9
+		out 64h, al
+		mov	cx, 0FFFFh
+led_delay5:	loop	led_delay5
+
+		mov al, 0A0h			; turn off prior LEDs
+		out 64h, al
 
 		include "memtest.inc"
 
 		; memtest will jump to the next instruction after the "include"
 
-		mov dh, BEEP_OKAY
+okay:		mov dh, BEEP_OKAY
 		jmp beep_count
 
 nmi:		mov	dh, BEEP_NMI

@@ -58,3 +58,18 @@ E4 - E7 read parity address latch
 E8 - EB read parity address latch
 F0 - F3 (read) enables parity
 F4 - F7 (read) disables parity
+
+
+keyboard LEDs:
+
+looking at BIOS,
+    first write (leds>>4) + 0xB0 to port 64h
+    second write (leds^0x0f) + 0xA0 to port 64h
+    A1 = F9
+    A2 = F8
+    A4 = F7
+    A8 = F3
+    B1 = F2
+    B2 = F1
+    B4 = caps
+    B8 = overtype

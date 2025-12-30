@@ -13,11 +13,11 @@ ff017: e6 46              out     46h,al
 ff019: bd 1f 00           mov     bp,1Fh
 ff01c: e9 d0 0d           jmp     0FFDEFh               ; does stuff with timer interrupt
 ff01f: bd 25 00           mov     bp,25h
-ff022: e9 ff 03           jmp     0FF424h
+ff022: e9 ff 03           jmp     0FF424h               ; setup the CRT ?
 ff025: bd 2b 00           mov     bp,2Bh
-ff028: e9 33 04           jmp     0FF45Eh
+ff028: e9 33 04           jmp     0FF45Eh               ; setup the 7201 ?
 ff02b: bd 31 00           mov     bp,31h
-ff02e: e9 82 04           jmp     0FF4B3h
+ff02e: e9 82 04           jmp     0FF4B3h               ; checksum ?
 ff031: bc 37 00           mov     sp,37h
 ff034: e9 f1 04           jmp     0FF528h
 ff037: bd 3d 00           mov     bp,3Dh
@@ -447,7 +447,7 @@ ff41b: e8 eb fe           call    0FF309h
 ff41e: 8b d3              mov     dx,bx
 ff420: e8 c8 ff           call    0FF3EBh
 ff423: c3                 ret     
-ff424: 32 c0              xor     al,al
+ff424: 32 c0              xor     al,al                         ; setup the CRT?
 ff426: e6 22              out     22h,al
 ff428: b0 4f              mov     al,4Fh
 ff42a: e6 20              out     20h,al
@@ -476,7 +476,7 @@ ff456: e6 06              out     6h,al
 ff458: b0 c4              mov     al,0C4h
 ff45a: e6 08              out     8h,al
 ff45c: ff e5              jmp     bp
-ff45e: 33 d2              xor     dx,dx
+ff45e: 33 d2              xor     dx,dx                         ; setup the 7201?
 ff460: b0 18              mov     al,18h
 ff462: e6 66              out     66h,al
 ff464: b0 04              mov     al,4h
@@ -516,7 +516,7 @@ ff4aa: 3c c0              cmp     al,0C0h
 ff4ac: 74 04              je      0FF4B2h
 ff4ae: 81 ca 00 01        or      dx,100h
 ff4b2: c3                 ret     
-ff4b3: b8 00 ff           mov     ax,0FF00h
+ff4b3: b8 00 ff           mov     ax,0FF00h             ; checksum?
 ff4b6: 8e c0              mov     es,ax
 ff4b8: 33 ff              xor     di,di
 ff4ba: b9 00 10           mov     cx,1000h
@@ -525,12 +525,12 @@ ff4bf: 26 02 25           add     ah,es:[di]
 ff4c2: 47                 inc     di
 ff4c3: e2 fa              loop    0FF4BFh
 ff4c5: 80 fc 41           cmp     ah,41h
-ff4c8: 74 05              je      0FF4CFh
+ff4c8: 74 05              je      0FF4CFh               ; checksum okay
 ff4ca: b2 e0              mov     dl,0E0h
 ff4cc: eb 03              jmp     0FF4D1h
 ff4ce: 90                 nop     
-ff4cf: ff e5              jmp     bp
-ff4d1: 8a c2              mov     al,dl
+ff4cf: ff e5              jmp     bp                    ; return to address in bp
+ff4d1: 8a c2              mov     al,dl                 ; error set to keyboard LEDs and beep?
 ff4d3: 24 f0              and     al,0F0h
 ff4d5: b1 04              mov     cl,4h
 ff4d7: d2 c8              ror     al,cl
@@ -540,7 +540,7 @@ ff4dd: 8a c2              mov     al,dl
 ff4df: 24 0f              and     al,0Fh
 ff4e1: 04 a0              add     al,0A0h
 ff4e3: e6 64              out     64h,al
-ff4e5: ba 05 00           mov     dx,5h
+ff4e5: ba 05 00           mov     dx,5h                 ; beep 5 times?
 ff4e8: b0 36              mov     al,36h                ; speaker on, make tone for a while
 ff4ea: e6 46              out     46h,al
 ff4ec: 32 c0              xor     al,al
@@ -570,7 +570,7 @@ ff51f: a3 0e 0d           mov     [0D0Eh],ax
 ff522: b0 27              mov     al,27h
 ff524: e6 22              out     22h,al
 ff526: ff e5              jmp     bp
-ff528: 33 c0              xor     ax,ax
+ff528: 33 c0              xor     ax,ax                 ; write 00 to 0:400h, A000 words
 ff52a: 8e c0              mov     es,ax
 ff52c: bf 00 04           mov     di,400h
 ff52f: b9 00 0a           mov     cx,0A00h
@@ -1572,12 +1572,12 @@ ffdea: e6 44              out     44h,al
 ffdec: 5a                 pop     dx
 ffded: 07                 pop     es 
 ffdee: c3                 ret     
-ffdef: b0 b0              mov     al,0B0h               ; timer interrupt
+ffdef: b0 b0              mov     al,0B0h               ; something to do with timer interrupt
 ffdf1: e6 46              out     46h,al
 ffdf3: b0 ff              mov     al,0FFh
 ffdf5: e6 44              out     44h,al
 ffdf7: e6 44              out     44h,al
-ffdf9: ff e5              jmp     bp
+ffdf9: ff e5              jmp     bp                    ; return to address in BP
 ffdfb: b9 ff 7f           mov     cx,7FFFh
 ffdfe: b0 10              mov     al,10h
 ffe00: e6 62              out     62h,al
