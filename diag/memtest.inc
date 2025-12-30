@@ -33,7 +33,7 @@ verify_loop0:
         	add     di, 2              ; Increment DI by 2 (AX is 2 bytes)
         	add     bx, MEM_INC        ; Increment BX to match the next expected value
         	loop    verify_loop0       ; Decrement CX and repeat until CX is 0
-		jmp 	ver1 ; xxx
+		jmp 	ver1
 ver_Failed0:
 		mov dh, BEEP_BANK0BAD
 		jmp ram_error

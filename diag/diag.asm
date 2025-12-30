@@ -11,6 +11,7 @@ BEEP_BANK4BAD	equ 6
 BEEP_BANK5BAD	equ 7
 BEEP_BANK6BAD	equ 8
 BEEP_BANK7BAD	equ 9
+BEEP_NMI	equ 10
 
 		org 0h					; start of 2732 EPROM
 
@@ -40,12 +41,25 @@ snd_delay1:	loop	snd_delay1
 		mov	cx, 0F000h			; wait for silence
 snd_delay2:	loop	snd_delay2
 
+		mov 	ax, 0h				; install NMI handler to 0000:0008
+		mov     es, ax
+		mov	bx, nmi
+		mov	es:[0008h], bx			; remember, it's little endian, so offset first
+		mov	bx, 0FF00h
+		mov	es:[000Ah], bx			; then segment
+
+;		sti					; enable parity if you dare
+;		in      al,0F0h 
+
 		include "memtest.inc"
 
 		; memtest will jump to the next instruction after the "include"
 
 		mov dh, BEEP_OKAY
 		jmp beep_count
+
+nmi:		mov	dh, BEEP_NMI
+		jmp	beep_count
 
 		;------------------------------------------
 		; beep_count - beep the number of times in dh, then stop running
