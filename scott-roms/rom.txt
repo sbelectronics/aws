@@ -82,7 +82,7 @@ ff0df: 88 0e 5c 0f        mov     [0F5Ch],cl
 ff0e3: 88 36 5d 0f        mov     [0F5Dh],dh
 ff0e7: 88 16 5a 0f        mov     [0F5Ah],dl
 ff0eb: 5a                 pop     dx
-ff0ec: e8 a2 03           call    0FF491h
+ff0ec: e8 a2 03           call    0FF491h               ; keyboard purge and reset
 ff0ef: bf 00 0f           mov     di,0F00h
 ff0f2: b9 10 00           mov     cx,10h
 ff0f5: 33 c0              xor     ax,ax
@@ -277,15 +277,15 @@ ff2cb: 3c c0              cmp     al,0C0h
 ff2cd: 75 f9              jne     0FF2C8h
 ff2cf: 58                 pop     ax
 ff2d0: c3                 ret     
-ff2d1: e4 66              in      al,66h
+ff2d1: e4 66              in      al,66h                        ; check for character
 ff2d3: 24 01              and     al,1h
 ff2d5: 74 04              je      0FF2DBh
-ff2d7: e4 64              in      al,64h
-ff2d9: f8                 clc     
+ff2d7: e4 64              in      al,64h                        ; read character
+ff2d9: f8                 clc                                   ; clear carry to indicate character
 ff2da: c3                 ret     
-ff2db: f9                 stc     
+ff2db: f9                 stc                                   ; set carry to indicate no character
 ff2dc: c3                 ret     
-ff2dd: e8 f1 ff           call    0FF2D1h
+ff2dd: e8 f1 ff           call    0FF2D1h                       ; wait for character and read it
 ff2e0: 72 fb              jb      0FF2DDh
 ff2e2: c3                 ret     
 ff2e3: e8 7a 00           call    0FF360h
@@ -502,17 +502,17 @@ ff489: e6 66              out     66h,al
 ff48b: b0 92              mov     al,92h
 ff48d: e6 64              out     64h,al
 ff48f: ff e5              jmp     bp
-ff491: e8 3d fe           call    0FF2D1h
-ff494: 73 fb              jae     0FF491h
-ff496: b0 92              mov     al,92h
+ff491: e8 3d fe           call    0FF2D1h               ; call check for character
+ff494: 73 fb              jae     0FF491h               ; got one? -> keep purging
+ff496: b0 92              mov     al,92h                ; reset keyboard
 ff498: e6 64              out     64h,al
-ff49a: b9 00 80           mov     cx,8000h
+ff49a: b9 00 80           mov     cx,8000h              ; wait 8000 cycles for characters to show up
 ff49d: e8 31 fe           call    0FF2D1h
-ff4a0: 73 08              jae     0FF4AAh
+ff4a0: 73 08              jae     0FF4AAh               ; got one?
 ff4a2: e2 f9              loop    0FF49Dh
 ff4a4: 81 ca 80 00        or      dx,80h
 ff4a8: eb 08              jmp     0FF4B2h
-ff4aa: 3c c0              cmp     al,0C0h
+ff4aa: 3c c0              cmp     al,0C0h               ; C0 means no key pressed
 ff4ac: 74 04              je      0FF4B2h
 ff4ae: 81 ca 00 01        or      dx,100h
 ff4b2: c3                 ret     
