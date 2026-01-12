@@ -55,30 +55,30 @@ snd_delay2:	loop	snd_delay2
 							; XXX I think reading from ROM will generate parity errors.
 		;in      al,0F0h 			; enable parity if you dare. This uses NMI and is not maskable.
 
-kbd_setup:      xor     dx,dx                         ; setup the keyboard channel B for setting LEDS on the 7201, from BIOS
-                mov     al,18h
+kbd_setup:      xor     dx,dx                           ; setup the keyboard channel B for setting LEDS on the 7201, from BIOS
+                mov     al,18h				; reset
                 out     66h,al
-                mov     al,4h
+                mov     al,4h				; write register 4
                 out     66h,al
-                mov     al,0C4h
+                mov     al,0C4h				; x64 clock, one stop bit, no parity
                 out     66h,al
-                mov     al,3h
+                mov     al,3h				; write register 3
                 out     66h,al
-                mov     al,0C1h
+                mov     al,0C1h				; 8 bit, RX enable
                 out     66h,al
-                mov     al,1h
+                mov     al,1h				; write register 1
                 out     66h,al
-                dec     ax
-                out     66h,al
-                mov     al,2h
+                dec     ax                              ; do not use interrupts
+                out     66h,al				
+                mov     al,2h				; write register 2 on channel A
                 out     62h,al
-                xor     al,al
+                xor     al,al				; both channels interrupt				
                 out     62h,al
-                mov     al,5h
+                mov     al,5h				; write register 5
                 out     66h,al
-                mov     al,68h
+                mov     al,68h				; 8 bits per character, tx eanble
                 out     66h,al
-                mov     al,92h
+                mov     al,92h				; write 0x92 to keyboard data - possibly software reset
                 out     64h,al
 
 kbd_ledo:	mov al, 0b8h			; over type
@@ -179,6 +179,21 @@ display_start:  xor     ax,ax				; ES and DS to 0   (from BIOS)
                 mov     [0D0Eh],ax			; No idea about this. 
                 mov     al,27h
                 out     22h,al                          ; start display
+
+kbd_echo:	xor	ax,ax				; ES:DI to 0000:0400
+		mov	es,ax
+		mov	di, 400h
+
+kbd_wait:	;mov	al, 0h				; we should already be pointing at reg 0
+		;out	66h, al				; select register 0
+		in 	al, 66h				; read status reg
+		and 	al, 1
+		jz	kbd_wait
+
+		in 	al, 64h
+		mov 	es:[di],al
+		jmp	kbd_wait
+
 
 okay:		mov dh, BEEP_OKAY
 		jmp beep_count

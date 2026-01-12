@@ -73,3 +73,12 @@ looking at BIOS,
     B2 = F1
     B4 = caps
     B8 = overtype
+
+Interrupts on 8259
+    1 - CPU board (keyboard, etc)
+    3 - RS232
+    4 - Printer
+    5 - 8253
+    6 - disk
+
+CPU board interrupts are set using Write Register 2
