@@ -3,24 +3,26 @@ EXTRN		WriteBsREcord:FAR, WriteByte:FAR, ErrorExit:FAR
 Main            SEGMENT WORD    'Code'
 Main            ENDS
 
-Const           SEGMENT WORD PUBLIC `Const`
+Const           SEGMENT WORD PUBLIC 'Const'
 
 rgchMsg         DB      'Now is the time for all good men to come to the aid of their party'
 cbMsg           DW      SIZE rgchMsg
 
 Const           ENDS
 
-Data            SEGMENT WORD    PUBLIC `Data`
+Data            SEGMENT WORD    PUBLIC 'Data'
 EXTRN           bsVid:BYTE
 
 cloop           DW      0
-cbWrittenRe     DW      ?
+cbWrittenRet    DW      ?
 
 Data            ENDS
 
 Stack           SEGMENT STACK   'Stack'
 wLimStack       EQU     THIS    WORD
 STACK           ENDS
+
+Dgroup          GROUP   Const, Data, Stack
 
 Main            SEGMENT
 ASSUME          CS:Main
@@ -29,7 +31,7 @@ Begin:          mov     ax, Dgroup
                 mov     ss, ax
 ASSUME          SS:Dgroup
                 mov     sp, offset DGroup:wLimStack
-                mov     ds, az
+                mov     ds, ax
 ASSUME          DS:DGroup
 
                 MOV     cloop, 0
@@ -42,7 +44,9 @@ loops:
                 push    ax
                 push    cbMsg
                 push    ds
-                lea     ax, cbWrittenRecord
+                lea     ax, cbWrittenRet
+                push    ax
+                call    WriteBsRecord
                 and     ax,ax
                 jne     error
 
@@ -87,6 +91,7 @@ print2:
                 pop     ax
                 pop     cx
                 loop    print1
+                ret
 printhex        ENDP
 
 error:          push    ax
