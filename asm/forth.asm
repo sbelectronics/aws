@@ -121,13 +121,7 @@ TNEXT3:	LODSW		; AX <- (IP)
 
 DPUSH:	PUSH	DX
 APUSH:	PUSH	AX
-COMMENT *
 
-	Patch the next 3 locations
-( using a DBUG monitor )
-with a `JMP TNEXT' for tracing through
-high level FORTH words.
-*
 NEXT:	LODSW		;AX <- (IP)
 	MOV	BX,AX
 ;
@@ -3946,19 +3940,6 @@ DOTCPU	DW	DOCOL
 	DW	BASE,STORE
 	DW	SEMIS
 
-COMMENT ~
-
-            CODE LEVEL "MATCH" DEFINITIONS
-
- STACK PARAMETERS:
-
- ( cursor:addr   byte:left   str:addr  str:len
-           ---   flag  new:cursor:offset         )
-
- This version of MATCH will handle string lengths
-      up to 65535 bytes in length.
-
-        ~
 	DB	85H	; MATCH
 	DB	'MATC'
 	DB	'H'+80H
@@ -4019,62 +4000,10 @@ TASK	DW	DOCOL
 ;
 INITDP	EQU	$	;SHOW END OF DICTIONARY
 ;
-COMMENT ~
 
-The remaining memory ( up to 'EM' ) is 
-used for:
-
-	1. EXTENSION DICTIONARY
-	2. PARAMETER STACK
-	3. TERMINAL INPUT BUFFER
-	4. RETURN STACK
-	5. USER VARIABLE AREA
-	6. DISK BUFFERS
-
-					~
 	ORG	EM-1	;LAST MEMORY ADDR-1
 	DB	0	;LAST LOCATION
 CSEG	ENDS
 ORIG	ENDP
 
-COMMENT	~
-
-  MISC. NOTES AND SCATTERED THOUGHTS
-
-- All developement was done under DOS 2.0 using IBM's
-    Macro Assembler ( MASM ).  FORTH disks may be formatted
-    using FORMAT in DOS.
-
-- When in FORTH, <Ctrl> P  will echo all output to the
-  printer.
-
-- Use the installation manual.  Descriptions for all FIG
-  words are given.  Those ERROR messages you get in FORTH
-  correspond to the relative line numbers in blocks
-  4 and 5 of the installation manual's model.  
-
-- Remember that all the FORTH words in this version are
-  upper case letters.  Use <CAPS LOCK> when in FORTH.
-
-- Changing variable EM will allow you to create a larger
-  dictionary space.  However I suggest you develop and
-  DEBUG with EM set to 4000H.  Setting it to a larger value
-  will result in a larger FORTH.EXE file, and you may
-  need to run EXE2BIN ( Chap 10, DOS 2.0 ) to get enough
-  disk space.  Once you are satisfied with what you have,
-  then by all means take that extra memory.
-
-- Reading the section on batch files may speed up your
-  developement.  See the example files that came with
-  the Macro Assembler.
-
-- Subscribe to FORTH Dimensions.  It is a valuable source
-  of system and application ideas.  Talking with fellow
-  FORTH programmers is sure to stir up some exciting ideas.
-  Consider joining a FIG chapter.  See the back of FORTH
-  Dimensions for more info.
-
-- <Ctrl-Break> will vector to WARM start ( Label WRM: )
-
-          ~
 
