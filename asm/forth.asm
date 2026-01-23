@@ -10,7 +10,6 @@ CTOSDATA        ENDS
 
 CTOSDGROUP	GROUP	CTOSDATA
 
-	PAGE
 FIGREL	EQU	1	; FIG RELEASE #
 FIGREV	EQU	0	;FIG REVISION #
 USRVER  EQU     0  	; USER VERSION NUMBER
@@ -43,7 +42,6 @@ BUF1	EQU	EM-CO*NBUF	; FIRST DISK BUFFER
 INITR0	EQU	BUF1-US		; ( RO )
 INITS0	EQU	INITR0-RTS	; ( S0 )
 ;
-PAGE
 CSEG	SEGMENT PARA PUBLIC 'CODE'
 	ASSUME CS:CSEG,DS:CSEG,SS:CSEG,ES:CSEG
 
@@ -83,114 +81,10 @@ ORIG	PROC	FAR	; SEE PG 5-31, MACRO ASSEMBLER
 	DW	5H,0B328H	; '8088'
 UP	DW	INITR0	; USER AREA POINTER
 RPP	DW	INITR0	; RETURNS STACK POINTER
-	page
-comment         ~
-   FORTH REGISTERS
-
-   FORTH   8088     FORTH PRESERVATION RULES
-   -----   ----     ----- ------------ -----
-    IP      SI      Interpreter pointer.  Must be preserved
-                    across FORTH words.
-
-     W      DX      Working register.  Jump to 'DPUSH' will
-                    push contents onto the parameter stack
-                    before executing 'APUSH'.
- 
-    SP      SP      Parameter stack pointer.  Must be preserved 
-                    across FORTH words.
- 
-    RP      BP      Return stack.  Must be preserved across
-                    FORTH words.
-
-            AX      General register.  Must be preserved across
-                    FORTH words.
-
-            BX      General purpose register.
- 
-            CX      General purpose register.
-
-            DI      General purpose register.
-
-            CS      Segment register.  Must be preserved
-                    across FORTH words.
-
-            DS      ditto
-        
-            SS      ibid
- 
-            ES      Temporary segment register only used by
-                    a few words.
-
----------------------------------------------------------- ~
-	page
-comment          ~
----------------------------------------------
-
-   COMMENT CONVENTIONS
-   ------- -----------
-
-   =       IS EQUAL TO
-   <-      ASSIGNMENT
-
-  NAME        =  Address of name
-  (NAME)      =  Contents of name
-  ((NAME))    =  Indirect contents
-
-  CFA         =  Address of CODE FIELD
-  LFA         =  Address of LINK FIELD
-  NFA         =  Address of NAME FIELD
-  PFA         =  Address of PARAMETER FIELD
-
-  S1          =  Parameter stack - 1st word
-  S2          =  Parameter stack - 2nd word
-  R1          =  Return stack    - 1st word
-  R2          =  Return stack    - 2nd word
-
-  LSB         =  Least significant bit
-  MSB         =  Most  significant bit
-  LB          =  Low byte
-  HB          =  High byte
-  LW          =  Low  word
-
------------------------------------------------------------- ~
-	page
-COMMENT  ~
-             DEBUG SUPPORT
-
-THIS ROUTINE WILL ALLOW YOU TO STEP THRU FORTH PROGRAMS
-EVERY TIME 'NEXT' IS EXECUTED.
-
-IN ORDER TO USE THE STEP FEATURE YOU MUST DO THE FOLLOWING:
-
-	1.  PATCH THE INSTRUCTION IN 'NEXT' WITH A JUMP
-            TO 'TNEXT'
- 
-    	2.  PATCH YOUR BREAKPOINT ROUTINE AT
-            LABEL   'BREAK'
-	
-	3.  SET VARIABLES, `BIP' & `BIPE' TO THE
-            ADDRESSES YOU WANT TO STEP THRU.
-
-THE CONTENTS OF THE 2 VARIABLES 'BIP` AND `BIPE'
-ARE INTERPRETED AS FOLLOWS:
-
-BIP	BIPE	DEBUG-CONDITION
----	----	---------------
-
-  0	   X	OFF
- -1	   X    TRACE ALL `NEXT' CALLS
-ADDR1      0    TRACE `ADDR1' ONLY
-ADDR1  ADDR2    TRACE `ADDR1' TO `ADDR1'
-
-NOTE:	THE ABOVE ADDRESSES CAN'T POINT TO A
-	`CODE FIELD ADDRESS'. 
-       	X = DON'T CARE
-
------------------------------------------------------ ~
 
 BIP	DW	0	; BREAKPOINT START ADDRESS
 BIPE	DW	0	; BREAKPOINT END ADDR
-	PAGE
+
 ;	THIS IS THE `NEXT' WITH DEBUG SUPPORT
 
 TNEXT:  PUSHF		;SAVE REGISTER
@@ -224,7 +118,7 @@ TNEXT2:	POP	AX
 TNEXT3:	LODSW		; AX <- (IP)
 	MOV	BX,AX
 	JMP	SHORT	NEXT1
-	PAGE
+
 DPUSH:	PUSH	DX
 APUSH:	PUSH	AX
 COMMENT *
@@ -241,7 +135,7 @@ NEXT:	LODSW		;AX <- (IP)
 NEXT1:	MOV	DX,BX	; (W) <- (IP)
 	INC	DX	; (W) <- (W) + 1
 	JMP	WORD PTR [BX]	; TO `CFA'
-	PAGE
+
 DP0	DB	83H
 	DB	'LI'
 	DB	'T'+80H
@@ -284,7 +178,7 @@ ZBRAN	DW	$+2
 	INC 	SI
 	JMP	NEXT
 ;
-	PAGE
+
 ;
 ;	(LOOP)
 	DB	86H
@@ -342,7 +236,7 @@ XDO	DW	$+2
 	PUSH	DX
 	XCHG	BP,SP	; GET PARAMETER STACK
 	JMP	NEXT
-	PAGE
+
 ;
 ;	I
 ;
@@ -376,7 +270,7 @@ DIGI1:	CMP	AL,DL	; COMPARE NUMBER TO BASE
 ;   NUMBER ERROR
 DIGI2:	SUB	AX,AX	;FALSE FLAG
 	JMP	APUSH
-	PAGE
+
 ;
 	DB	86H
 	DB	'(FIND'
@@ -430,7 +324,7 @@ PFIN6:	MOV	BX,[BX]	; GET LINK FIELD ADDR
 	MOV	AX,0	; FALSE FLAG
 	JMP	APUSH	; DONE ( NO MATCH FOUND )
 ;
-	PAGE
+
 	DB	87H
 	DB	'ENCLOS'
 	DB	'E'+80H
@@ -473,7 +367,7 @@ ENCL3:	MOV	AX,DX	;COUNTERS ARE EQUAL
 ENCL4:	MOV	AX,DX
 	INC	AX	;COUNT+1
 	JMP	DPUSH
-	PAGE
+
 	%OUT	LINE ~500
 ;	EMIT
 	DB	84H
@@ -508,7 +402,7 @@ QTERM	DW	$+2
 	DW	QTERM-0CH
 CR	DW	$+2
 	JMP	PCR
-	PAGE
+
 ;	CMOVE
 	DB	85H
 	DB	'CMOV'
@@ -558,7 +452,7 @@ USLAS	DW	$+2
 DZERO:	MOV	AX,-1
 	MOV	DX,AX
 	JMP	DPUSH	;STORE QUOT/REM
-	PAGE
+
 ;	AND
 ;
 	DB	83H
@@ -594,7 +488,7 @@ XORR	DW	$+2	; (S1) <- (S1) XOR (S2)
 	POP	BX
 	XOR	AX,BX
 	JMP	APUSH
-	PAGE
+
 ;	SP@
 ;
 	DB	83H
@@ -637,7 +531,7 @@ RPSTO	DW	$+2
 	MOV	BP,8[BX]	;RESET RETURN STACK PTR
 	JMP	NEXT
 ;
-	PAGE
+
 ;	;S
 ;
 ;   END OF SCREEN OR RUN TIME COLON WORDS
@@ -662,7 +556,7 @@ LEAVE	DW	$+2	;LIMIT <- INDEX
 	MOV	AX,[BP]	;GET INDEX
 	MOV	2[BP],AX	;STORE IT AT LIMIT
 	JMP	NEXT
-	PAGE
+
 ;
 ;	>R
 ;
@@ -695,7 +589,7 @@ FROMR	DW	$+2	;(S1) <- (R1)
 	DB	'R'+80H
 	DW	FROMR-5
 RR	DW	IDO+2
-	PAGE
+
 ;	0=
 ;
 	DB	82H
@@ -734,7 +628,7 @@ PLUS	DW	$+2	;(S1) <- (S1) + (S2)
 	POP	BX
 	ADD	AX,BX
 	JMP	APUSH
-	PAGE
+
 ;	D+
 ;
 ;  XLW  XHW    YLW  YHW  -->  SLW  SHW
@@ -778,7 +672,7 @@ DMINU	DW	$+2
 	SUB	DX,CX	; MAKE 2'S COMPLEMENT
 	SBB	AX,BX	; HIGH WORD
 	JMP	DPUSH
-	PAGE
+
 ;
 ;	OVER
 ;
@@ -823,7 +717,7 @@ DUPE	DW	$+2
 	POP	AX
 	PUSH	AX
 	JMP	APUSH
-	PAGE
+
 ;	2DUP
 ;
 	DB	84H
@@ -870,7 +764,7 @@ AT	DW	$+2
 	POP	BX
 	MOV	AX,[BX]
 	JMP	APUSH
-	PAGE
+
 ;	C@
 ;
 	DB	82H
@@ -962,7 +856,7 @@ LSTORE	DW	$+2
 	MOV	[BX],AX
 	MOV	DS,DX
 	JMP	NEXT
-	PAGE
+
 	%OUT	LINE ~1000
 ;
 ;	:
@@ -999,7 +893,7 @@ SEMI	DW	DOCOL
 	DW	SMUDG
 	DW	LBRAC
 	DW	SEMIS
-	PAGE
+
 ;	CONSTANT
 ;
 	DB	88H
@@ -1045,7 +939,7 @@ DOUSE:	INC	DX	;PFA
 	MOV	DI,UP	;USER VAR ADDRESS
 	LEA	AX,[BX+DI]	;ADDR OF VARIABLE
 	JMP	APUSH
-	PAGE
+
 ;	0
 	DB	81H
 	DB	'0'+80H
@@ -1147,7 +1041,7 @@ PORIG	DW	DOCOL
 	DW	ORIG
 	DW	PLUS
 	DW	SEMIS
-	page
+
 ;
 ;	S0
 ;
@@ -1229,7 +1123,7 @@ VOCL	DW	DOUSE
 	DW	VOCL-0BH
 BLK	DW	DOUSE
 	DW	16H
-	PAGE
+
 ;
 ;	IN
 ;
@@ -1349,7 +1243,7 @@ HLD	DW	DOUSE
 	DW	30H
 ;
 ;========== END USER VARIABLES =============;
-	PAGE
+
 ;
 ;	1+
 ;
@@ -1600,7 +1494,7 @@ PFA	DW	DOCOL
 	DW	LIT,5
 	DW	PLUS
 	DW	SEMIS
-	PAGE
+
 	%OUT	LINE ~1500
 ;	!CSP
 ;
@@ -1643,7 +1537,7 @@ QCOMP	DW	DOCOL
 	DW	LIT,11H
 	DW	QERR
 	DW	SEMIS
-	PAGE
+
 ;	?EXEC
 ;
 	DB	85H
@@ -1697,7 +1591,7 @@ QLOAD	DW	DOCOL
 	DW	LIT,16H
 	DW	QERR
 	DW	SEMIS
-	PAGE
+
 ;	COMPILE
 ;
 	DB	87H
@@ -1735,7 +1629,7 @@ RBRAC	DW	DOCOL
 	DW	STATE
 	DW	STORE
 	DW	SEMIS
-	PAGE
+
 ;	SMUDGE
 ;
 	DB	86H
@@ -1901,7 +1795,7 @@ DTRA2	DW	ONE
 DTRA3	DW	XLOOP	; LOOP
 	DW	OFFSET DTRA1-$
 	DW	SEMIS
-	PAGE
+
 	%OUT	LINE ~2000
 ;	(.")
 ;
@@ -1946,7 +1840,7 @@ DOTQ1	DW	WORDS
 	DW	COUNT
 	DW	TYPES	; ENDIF
 DOTQ2	DW	SEMIS
-	PAGE
+
 ;	EXPECT
 ;
 	DB	86H
@@ -2025,7 +1919,7 @@ QUERY	DW	DOCOL
 	DW	INN
 	DW	STORE
 	DW	SEMIS
-	PAGE
+
 	;	0 (NULL)
 ;
 	DB	0C1H	; A BINARY ZERO
@@ -2165,7 +2059,7 @@ WORD2	DW	INN
 	DW	FROMR
 	DW	CMOVE
 	DW	SEMIS
-	PAGE
+
 ;	(NUMBER)
 ;
 	DB	88H
@@ -2205,7 +2099,7 @@ PNUM3	DW	FROMR
 	DW	OFFSET PNUM1-$
 PNUM2	DW	FROMR
 	DW	SEMIS
-	PAGE
+
 ;	NUMBER
 ;
 	DB	86H
@@ -2249,7 +2143,7 @@ NUMB2	DW	DROP
 	DW	OFFSET NUMB3-$
 	DW	DMINU	; ENDIF
 NUMB3	DW	SEMIS
-	PAGE
+
 ;	-FIND
 ;
 	DB	85H
@@ -2343,7 +2237,7 @@ IDDOT	DW	DOCOL
 	DW	TYPES
 	DW	SPACE
 	DW	SEMIS
-	PAGE
+
 ;	CREATE
 ;
 	DB	86H
@@ -2385,7 +2279,7 @@ CREA1	DW	HERE
 	DW	TWOP
 	DW	COMMA
 	DW	SEMIS
-	PAGE
+
 ;	[COMPILE]
 ;
 	DB	0C9H
@@ -2417,7 +2311,7 @@ LITER	DW	DOCOL
 	DW	LIT
 	DW	COMMA	;ENDIF
 LITE1	DW	SEMIS
-	PAGE
+
 ;
 ;	DLITERAL
 ;
@@ -2457,7 +2351,7 @@ QSTAC	DW	DOCOL
 	DW	LIT,7
 	DW	QERR
 	DW	SEMIS
-	PAGE
+
 	%OUT	LINE ~2500
 ;	INTERPRET
 ;
@@ -2498,7 +2392,7 @@ INTE6	DW	DROP
 INTE7	DW	QSTAC	;ENDIF
 INTE5	DW	BRAN	;AGAIN
 	DW	OFFSET INTE1-$
-	PAGE
+
 ;	IMMEDIATE
 ;
 	DB	89H
@@ -2537,7 +2431,7 @@ DOVOC	DW	TWOP
 	DW	CONT
 	DW	STORE
 	DW	SEMIS
-	PAGE
+
 ;	FORTH
 ;
 ;   THE 'TASK-7' IS A COLD START VALUE ONLY.
@@ -2576,7 +2470,7 @@ PAREN	DW	DOCOL
 	DW	LIT,')'
 	DW	WORDS
 	DW	SEMIS
-	PAGE
+
 ;	QUIT
 ;
 	DB	84H
@@ -2622,7 +2516,7 @@ ABORT	DW	DOCOL
 	DW	FORTH
 	DW	DEFIN
 	DW	QUIT
-	PAGE
+
 ;	WARM START VECTOR COMES HERE
 ;
 WRM:	MOV	SI,OFFSET WRM1
@@ -2693,7 +2587,7 @@ COLD	DW	DOCOL
 	DW	LIT,FORTH+6
 	DW	STORE
 	DW	ABORT
-	PAGE
+
 ;	S->D
 ;
 	DB	84H
@@ -2783,7 +2677,7 @@ MAX	DW	DOCOL,TDUP
 	DW	SWAP	;ENDIF
 MAX1	DW	DROP
 	DW	SEMIS
-	PAGE
+
 ;	M*
 ;
 	DB	82H
@@ -2912,7 +2806,7 @@ MSMOD	DW	DOCOL
 	DW	USLAS
 	DW	FROMR
 	DW	SEMIS
-	PAGE
+
 ;	(LINE)
 ;
 	DB	86H
@@ -2974,7 +2868,7 @@ MESS1	DW	PDOTQ
 	DB	'MSG # '
 	DW	DOT	;ENDIF
 MESS3	DW	SEMIS
-	PAGE
+
 	%OUT	LINE ~3000
 ;--------------------------------------------
 ;
@@ -3065,7 +2959,7 @@ PREV	DW	DOVAR
 	DW	PREV-7
 SPBLK	DW	DOCON
 	DW	KBBUF/BPS
-	PAGE
+
 ;	#BUFF
 ;
 	DB	85H	;NO. OF BUFFERS
@@ -3114,7 +3008,7 @@ MTBUF	DW	DOCOL,FIRST
 	DW	LIMIT,OVER
 	DW	SUBB,ERASEE
 	DW	SEMIS
-	PAGE
+
 ;	DR0
 ;
 	DB	83H
@@ -3154,7 +3048,7 @@ BUFF2	DW	RR,STORE
 	DW	RR,PREV
 	DW	STORE,FROMR
 	DW	TWOP,SEMIS
-	PAGE
+
 ;	BLOCK
 ;
 	DB	85H
@@ -3188,7 +3082,7 @@ BLOC3	DW	DUPE,AT
 	DW	STORE
 BLOC1	DW	FROMR,DROP
 	DW	TWOP,SEMIS
-	PAGE
+
 WERR	DB  	'DISK WRITE ERROR  $'
 RERR	DB  	'DISK READ ERROR   $'
 ;
@@ -3257,7 +3151,7 @@ RSLW	DW	DOCOL
 	DW	BRAN,OFFSET RSLW2-$
 RSLW1	DW	WSEC
 RSLW2	DW	SEMIS
-	PAGE
+
 ;	FLUSH
 ;
 	DB	85H
@@ -3292,7 +3186,7 @@ SCREEN	DW	FROMR,INN
 	DW	FROMR,BLK
 	DW	STORE
 	DW	SEMIS
-	PAGE
+
 ;	-->
 ;
 	DB	0C3H
@@ -3313,7 +3207,7 @@ ARROW	DW	DOCOL
 	DW	BLK
 	DW	PSTOR
 	DW	SEMIS
-	PAGE
+
 ;
 ;------------------------------------
 ; QUERY KEYBOARD FOR KEY PRESSED
@@ -3360,7 +3254,7 @@ PEMIT	DW	$+2
 	POP	AX	;GET CHAR
 	CALL	POUT	;CHAR OUTPUT
 	JMP	NEXT
-	PAGE
+
 ;------------------------------
 ; CRLF TO CONSOLE/PRINTER
 ;------------------------------
@@ -3445,7 +3339,7 @@ ASSUME	DS:	CSEG
 retChar	DB	?
 
 CI	ENDP
-	PAGE
+
 ;--------------------
 ; CONSOLE OUTPUT
 ;--------------------
@@ -3487,7 +3381,7 @@ CHO	ENDP
 LO	PROC	NEAR
 	RET
 LO	ENDP
-	PAGE
+
 	%OUT	LINE ~3500
 ;	'
 ;
@@ -3534,7 +3428,7 @@ FORG	DW	DOCOL
 	DW	AT
 	DW	STORE
 	DW	SEMIS
-	PAGE
+
 ;	BACK
 ;
 	DB	84H
@@ -3575,7 +3469,7 @@ ENDIFF	DW	DOCOL
 	DW	SWAP
 	DW	STORE
 	DW	SEMIS
-	PAGE
+
 ;	THEN
 ;
 	DB	0C4H
@@ -3612,7 +3506,7 @@ LOOPC	DW	DOCOL
 	DW	XLOOP
 	DW	BACK
 	DW	SEMIS
-	PAGE
+
 ;	+LOOP
 ;
 	DB	0C5H
@@ -3650,7 +3544,7 @@ UNTIL	DW	DOCOL
 ENDD	DW	DOCOL
 	DW	UNTIL
 	DW	SEMIS
-	PAGE
+
 ;	AGAIN
 ;
 	DB	0C5H
@@ -3696,7 +3590,7 @@ IFF	DW	DOCOL
 	DW	COMMA
 	DW	TWO
 	DW	SEMIS
-	PAGE
+
 ;	ELSE
 ;
 	DB	0C4H
@@ -3727,7 +3621,7 @@ WHILE	DW	DOCOL
 	DW	IFF
 	DW	TWOP
 	DW	SEMIS
-	PAGE
+
 ;	SPACES
 ;
 	DB	86H
@@ -3774,7 +3668,7 @@ EDIGS	DW	DOCOL
 	DW	OVER
 	DW	SUBB
 	DW	SEMIS
-	PAGE
+
 ;	SIGN
 ;
 	DB	84H
@@ -3862,7 +3756,7 @@ DOTR	DW	DOCOL
 	DW	FROMR
 	DW	DDOTR
 	DW	SEMIS
-	PAGE
+
 ;	D.
 ;
 	DB	82H
@@ -3905,7 +3799,7 @@ UDOT	DW	DOCOL
 	DW	ZERO
 	DW	DDOT
 	DW	SEMIS
-	PAGE
+
 	%OUT	LINE ~4000
 ;	VLIST
 ;
@@ -3956,7 +3850,7 @@ VLIS2	DW	DUPE
 	DW	VLIST-8
 BYE	DW	$+2
 	call	Exit
-	PAGE
+
 ;	LIST
 ;
 	DB	84H
@@ -4006,7 +3900,7 @@ INDE1	DW	CR,IDO
 INDE2	DW	XLOOP
 	DW	OFFSET INDE1-$
 	DW	SEMIS
-	PAGE
+
 ;	TRIAD
 ;
 	DB	85H
@@ -4051,7 +3945,7 @@ DOTCPU	DW	DOCOL
 	DW	DDOT
 	DW	BASE,STORE
 	DW	SEMIS
-	PAGE
+
 COMMENT ~
 
             CODE LEVEL "MATCH" DEFINITIONS
@@ -4111,7 +4005,7 @@ MAT4:	MOV	AX,SI	;NEW CURSOR ADDR
 	SUB	AX,SI	;COMPUTE CURSOR OFFSET
 	MOV	SI,DI	;GET BACK UP
 	JMP	DPUSH	; BYE..BYE
-	PAGE
+
 ;
 ;**** LAST DICTIONARY WORD ****
 ;            T A S K
@@ -4142,7 +4036,7 @@ used for:
 	DB	0	;LAST LOCATION
 CSEG	ENDS
 ORIG	ENDP
-	PAGE
+
 COMMENT	~
 
   MISC. NOTES AND SCATTERED THOUGHTS
