@@ -17,8 +17,6 @@ Dgroup		GROUP	Const, Data, Stack
 Main		SEGMENT
 ASSUME		CS: Main
 
-bannerLen 	EQU	15
-
 Begin:		mov 	ax, Dgroup
 		mov 	SS, AX
 ASSUME		SS: Dgroup
@@ -82,8 +80,8 @@ Data		ENDS
 
 Const		SEGMENT WORD	PUBLIC	'Const'
 
-banner		DB	'Scott Was Here'
-		DB	0Ah
+banner		DB	'Scott Was Here',0Ah
+bannerLen	DW	SIZE banner
 
 Const 		ENDS
 
