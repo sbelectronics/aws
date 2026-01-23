@@ -9,7 +9,7 @@ Data		ENDS
 Const		SEGMENT WORD	PUBLIC	'Const'
 Const		ENDS
 
-Stack		SEGMENT STACK
+Stack		SEGMENT STACK   'Stack'
 STACK 		ENDS
 
 Dgroup		GROUP	Const, Data, Stack
