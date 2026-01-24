@@ -1,17 +1,32 @@
-EXTRN		WriteByte:FAR, WriteBsRecord:FAR, ErrorExit:FAR, Exit:FAR
+EXTRN		WriteByte:FAR, WriteBsRecord:FAR, ErrorExit:FAR, Exit:FAR, ReadByte:FAR
 
-CSEG	SEGMENT PARA PUBLIC 'CODE'
-CSEG            ENDS
+Main	SEGMENT PARA PUBLIC 'Code'
+Main            ENDS
 
-CTOSDATA        SEGMENT WORD    PUBLIC 'Data'
+; Data is only used to make use of bsVid and bsKbd, which are
+; located in the SAM data segment. We will assume that CS=DS=ES for our
+; own data, since forth needs to be able to modify its own routines.
+
+Const           SEGMENT WORD PUBLIC 'Const'
+rgchMsg         DB      'Now is the time for all good men to come to the aid of their party'
+cbMsg           DW      SIZE rgchMsg
+Const           ENDS
+
+Data            SEGMENT WORD    PUBLIC 'Data'
 EXTRN           bsVid:BYTE
 EXTRN		bsKbd:BYTE
-CTOSDATA        ENDS
+cbWrittenRet    DW      ?
+retChar		DB	?
+Data            ENDS
 
-CTOSDGROUP	GROUP	CTOSDATA
+Stack           SEGMENT STACK   'Stack'
+wLimStack       EQU     THIS    WORD
+STACK           ENDS
+
+Dgroup	GROUP	Const, Data, Stack
 
 FIGREL	EQU	1	; FIG RELEASE #
-FIGREV	EQU	0	;FIG REVISION #
+FIGREV	EQU	0	; FIG REVISION #
 USRVER  EQU     0  	; USER VERSION NUMBER
 ;
 ;	ASCII CHARACTER EQUIVALENTS
@@ -30,7 +45,7 @@ FF	EQU	0CH	; FORM FEED
 ;
 SEC_DSK	EQU	360
 PRINTER_NO	EQU	0
-EM	EQU	04000H	; END OF MEMORY + 1
+;EM	EQU	04000H	; END OF MEMORY + 1
 NSCR	EQU	2	; NO. 1024 BYTE SCREENS
 KBBUF	EQU	512	;DATA BYTES PER DISK BUFFER
 US	EQU	40H	; USER VARIABLE SPACE
@@ -42,13 +57,13 @@ BUF1	EQU	EM-CO*NBUF	; FIRST DISK BUFFER
 INITR0	EQU	BUF1-US		; ( RO )
 INITS0	EQU	INITR0-RTS	; ( S0 )
 ;
-CSEG	SEGMENT PARA PUBLIC 'CODE'
-	ASSUME CS:CSEG,DS:CSEG,SS:CSEG,ES:CSEG
+Main	SEGMENT PARA PUBLIC 'Code'
+	ASSUME CS:Main,DS:Main,SS:Main,ES:Main
 
 ;                         FOR EXPLANATION OF EXE2BIN
 ORIG	PROC	FAR	; SEE PG 5-31, MACRO ASSEMBLER
 	NOP
-	JMP	XCLD	;VECTOR TO COLD START
+	JMP	XCLD	; VECTOR TO COLD START
 	NOP
 	JMP	WRM	; VECTOR TO WARM START
 ;
@@ -122,7 +137,16 @@ TNEXT3:	LODSW		; AX <- (IP)
 DPUSH:	PUSH	DX
 APUSH:	PUSH	AX
 
-NEXT:	LODSW		;AX <- (IP)
+NEXT:   PUSH AX		; XXX
+	MOV AX, SI
+	CALL printhex
+	MOV AL, 0ah
+	call CHO
+	call CI
+	POP AX
+
+	LODSW		;AX <- (IP)
+
 	MOV	BX,AX
 ;
 ;
@@ -1354,11 +1378,11 @@ LES2:	JMP	APUSH
 ULESS	DW	DOCOL,TDUP
 	DW	XORR,ZLESS
 	DW	ZBRAN
-	DW	OFFSET ULES1-$	;IF
+	DW	000Ch		;OFFSET ULES1-$	;IF
 	DW	DROP,ZLESS
 	DW	ZEQU
 	DW	BRAN
-	DW	OFFSET ULES2-$
+	DW	0006h 		;OFFSET ULES2-$
 ULES1	DW	SUBB,ZLESS	;ELSE
 ULES2	DW	SEMIS		;ENDIF
 ;
@@ -1404,7 +1428,7 @@ SPACE	DW	DOCOL
 DDUP	DW	DOCOL
 	DW	DUPE
 	DW	ZBRAN	; IF
-	DW	OFFSET DDUP1-$
+	DW	0004h	; OFFSET DDUP1-$
 	DW	DUPE	;ENDIF
 DDUP1	DW	SEMIS
 ;
@@ -1423,7 +1447,7 @@ TRAV1	DW	OVER	;BEGIN
 	DW	CAT
 	DW	LESS
 	DW	ZBRAN	;UNTIL
-	DW	OFFSET TRAV1-$
+	DW	0FF0Fh	;OFFSET TRAV1-$
 	DW	SWAP
 	DW	DROP
 	DW	SEMIS
@@ -1508,10 +1532,10 @@ SCSP	DW	DOCOL
 QERR	DW	DOCOL
 	DW	SWAP
 	DW	ZBRAN	;IF
-	DW	OFFSET QERR1-$
+	DW	0008h	;OFFSET QERR1-$
 	DW	ERROR
 	DW	BRAN	;ELSE
-	DW	OFFSET QERR2-$
+	DW	0004h	;OFFSET QERR2-$
 QERR1	DW	DROP	;ENDIF
 QERR2	DW	SEMIS
 ;
@@ -1741,7 +1765,7 @@ COUNT	DW	DOCOL
 TYPES	DW	DOCOL
 	DW	DDUP
 	DW	ZBRAN	; IF
-	DW	OFFSET TYPE1-$
+	DW	0018h	; OFFSET TYPE1-$
 	DW	OVER
 	DW	PLUS
 	DW	SWAP
@@ -1752,9 +1776,9 @@ TYPE2	DW	IDO
 	DW	ANDD	;STRIP 80H FROM LAST CHAR
 	DW	EMIT
 	DW	XLOOP	; LOOP
-	DW	OFFSET TYPE2-$
+	DW	0FFF8h	; OFFSET TYPE2-$
 	DW	BRAN	; ELSE
-	DW	OFFSET TYPE3-$
+	DW	0004h	;OFFSET TYPE3-$
 TYPE1	DW	DROP	; ENDIF
 TYPE3	DW	SEMIS
 ;
@@ -1777,14 +1801,14 @@ DTRA1	DW	OVER
 	DW	BLS
 	DW	SUBB
 	DW	ZBRAN	;IF
-	DW	OFFSET DTRA2-$
+	DW	0008h	; OFFSET DTRA2-$
 	DW	LEAVE
 	DW	BRAN	; ELSE
-	DW	OFFSET DTRA3-$
+	DW	0006h	; OFFSET DTRA3-$
 DTRA2	DW	ONE
 	DW	SUBB	; ENDIF
 DTRA3	DW	XLOOP	; LOOP
-	DW	OFFSET DTRA1-$
+	DW	0FFE0h	; OFFSET DTRA1-$
 	DW	SEMIS
 
 ;	(.")
@@ -1815,7 +1839,7 @@ DOTQ	DW	DOCOL
 	DW	STATE
 	DW	XAT
 	DW	ZBRAN	; IF
-	DW	OFFSET DOTQ1-$
+	DW	0014h	; OFFSET DOTQ1-$
 	DW	COMP
 	DW	PDOTQ
 	DW	WORDS
@@ -1824,7 +1848,7 @@ DOTQ	DW	DOCOL
 	DW	ONEP
 	DW	ALLOT
 	DW	BRAN	; ELSE
-	DW	OFFSET DOTQ2-$
+	DW	000Ah	; OFFSET DOTQ2-$
 DOTQ1	DW	WORDS
 	DW	HERE
 	DW	COUNT
@@ -1849,7 +1873,7 @@ EXPE1	DW	KEY
 	DW	XAT
 	DW	EQUAL
 	DW	ZBRAN	; IF
-	DW	OFFSET EXPE2-$
+	DW	002Ah	; OFFSET EXPE2-$
 	DW	DROP
 	DW	DUPE
 	DW	IDO
@@ -1861,26 +1885,26 @@ EXPE1	DW	KEY
 	DW	PLUS
 	DW	TOR
 	DW	ZBRAN	; IF
-	DW	OFFSET EXPE6-$
+	DW	000Ah	; OFFSET EXPE6-$
 	DW	LIT
 	DW	BELL
 	DW	BRAN	; ELSE
-	DW	OFFSET EXPE7-$
+	DW	0006h	; OFFSET EXPE7-$
 EXPE6	DW	LIT
 	DW	BSOUT	; ENDIF
 EXPE7	DW	BRAN	; ELSE
-	DW	OFFSET EXPE3-$
+	DW	0028h	; OFFSET EXPE3-$
 EXPE2	DW	DUPE
 	DW	LIT,0DH
 	DW	EQUAL
 	DW	ZBRAN	; IF
-	DW	OFFSET EXPE4-$
+	DW	000Eh	; OFFSET EXPE4-$
 	DW	LEAVE
 	DW	DROP
 	DW	BLS
 	DW	ZERO
 	DW	BRAN	; ELSE
-	DW	OFFSET EXPE5-$
+	DW	0004h	; OFFSET EXPE5-$
 EXPE4	DW	DUPE	; ENDIF
 EXPE5	DW	IDO
 	DW	CSTOR
@@ -1890,7 +1914,7 @@ EXPE5	DW	IDO
 	DW	STORE	; ENDIF
 EXPE3	DW	EMIT
 	DW	XLOOP	; LOOP
-	DW	OFFSET EXPE1-$
+	DW	0FF9Ch	; OFFSET EXPE1-$
 	DW	DROP
 	DW	SEMIS
 ;
@@ -1919,7 +1943,7 @@ NULL	DW	DOCOL
 	DW	BLK
 	DW	XAT
 	DW	ZBRAN	; IF
-	DW OFFSET NULL1-$
+	DW 	002Ah	; OFFSET NULL1-$
 	DW	ONE
 	DW	BLK
 	DW	PSTOR
@@ -1934,12 +1958,12 @@ NULL	DW	DOCOL
 	DW	ANDD
 	DW	ZEQU
 	DW	ZBRAN	; IF
-	DW	OFFSET NULL2-$
+	DW	0008h	; OFFSET NULL2-$
 	DW	QEXEC
 	DW	FROMR
 	DW	DROP	; ENDIF
 NULL2	DW	BRAN	; ELSE
-	DW	OFFSET NULL3-$
+	DW	0006h	; OFFSET NULL3-$
 NULL1	DW	FROMR
 	DW	DROP	; ENDIF
 NULL3	DW	SEMIS
@@ -2019,12 +2043,12 @@ WORDS	DW	DOCOL
 	DW	BLK
 	DW	XAT
 	DW	ZBRAN	; IF
-	DW	OFFSET WORD1-$
+	DW	000Ch	; OFFSET WORD1-$
 	DW	BLK
 	DW	XAT
 	DW	BLOCK
 	DW	BRAN	; ELSE
-	DW	OFFSET WORD2-$
+	DW	0006h	; OFFSET WORD2-$
 WORD1	DW	TIB
 	DW	XAT	; ENDIF
 WORD2	DW	INN
@@ -2065,7 +2089,7 @@ PNUM1	DW	ONEP	; BEGIN
 	DW	XAT
 	DW	DIGIT
 	DW	ZBRAN	; WHILE
-	DW	OFFSET PNUM2-$
+	DW	002ch	; OFFSET PNUM2-$
 	DW	SWAP
 	DW	BASE
 	DW	XAT
@@ -2080,13 +2104,13 @@ PNUM1	DW	ONEP	; BEGIN
 	DW	XAT
 	DW	ONEP
 	DW	ZBRAN	; IF
-	DW	OFFSET PNUM3-$
+	DW	0008h	; OFFSET PNUM3-$
 	DW	ONE
 	DW	DPL
 	DW	PSTOR	; ENDIF
 PNUM3	DW	FROMR
 	DW	BRAN	; REPEAT
-	DW	OFFSET PNUM1-$
+	DW	0FFC6h	; OFFSET PNUM1-$
 PNUM2	DW	FROMR
 	DW	SEMIS
 
@@ -2117,7 +2141,7 @@ NUMB1	DW	DPL	; BEGIN
 	DW	BLS
 	DW	SUBB
 	DW	ZBRAN	; WHILE
-	DW	OFFSET NUMB2-$
+	DW	0016h	; OFFSET NUMB2-$
 	DW	DUPE
 	DW	CAT
 	DW	LIT,2EH
@@ -2126,11 +2150,11 @@ NUMB1	DW	DPL	; BEGIN
 	DW	QERR
 	DW	ZERO
 	DW	BRAN	; REPEAT
-	DW	OFFSET NUMB1-$
+	DW	0FFDCh	; OFFSET NUMB1-$
 NUMB2	DW	DROP
 	DW	FROMR
 	DW	ZBRAN	; IF
-	DW	OFFSET NUMB3-$
+	DW	0004h	; OFFSET NUMB3-$
 	DW	DMINU	; ENDIF
 NUMB3	DW	SEMIS
 
@@ -2151,7 +2175,7 @@ DFIND	DW	DOCOL
 	DW	DUPE
 	DW	ZEQU
 	DW	ZBRAN	;IF
-	DW	OFFSET DFIN1-$
+	DW	000Ah	; OFFSET DFIN1-$
 	DW	DROP
 	DW	HERE
 	DW	LATES
@@ -2179,7 +2203,7 @@ ERROR	DW	DOCOL
 	DW	XAT
 	DW	ZLESS
 	DW	ZBRAN	;IF
-	DW	OFFSET ERRO1-$
+	DW	0004h	; OFFSET ERRO1-$
 	DW	PABOR	;ENDIF
 ERRO1	DW	HERE
 	DW	COUNT
@@ -2196,7 +2220,7 @@ ERRO1	DW	HERE
 	DW	BLK,XAT
 	DW	DDUP
 	DW	ZBRAN	; IF
-	DW	OFFSET ERRO2-$
+	DW	0008h	; OFFSET ERRO2-$
 	DW	INN,XAT
 	DW	SWAP	;ENDIF
 ERRO2	DW	QUIT
@@ -2237,7 +2261,7 @@ IDDOT	DW	DOCOL
 CREAT	DW	DOCOL
 	DW	DFIND
 	DW	ZBRAN	;IF
-	DW	OFFSET CREA1-$
+	DW	0010h	; OFFSET CREA1-$
 	DW	DROP
 	DW	NFA
 	DW	IDDOT
@@ -2296,7 +2320,7 @@ LITER	DW	DOCOL
 	DW	STATE
 	DW	XAT
 	DW	ZBRAN	;IF
-	DW	OFFSET LITE1-$
+	DW	0008h	;OFFSET LITE1-$
 	DW	COMP
 	DW	LIT
 	DW	COMMA	;ENDIF
@@ -2313,7 +2337,7 @@ DLITE	DW	DOCOL
 	DW	STATE
 	DW	XAT
 	DW	ZBRAN	; IF
-	DW	OFFSET DLIT1-$
+	DW	0008h	; OFFSET DLIT1-$
 	DW	SWAP
 	DW	LITER
 	DW	LITER	; ENDIF
@@ -2351,36 +2375,36 @@ QSTAC	DW	DOCOL
 INTER	DW	DOCOL
 INTE1	DW	DFIND	;BEGIN
 	DW	ZBRAN	;IF
-	DW	OFFSET INTE2-$
+	DW	001Eh	; OFFSET INTE2-$
 	DW	STATE
 	DW	XAT
 	DW	LESS
 	DW	ZBRAN	;IF
-	DW	OFFSET INTE3-$
+	DW	000Ah	; OFFSET INTE3-$
 	DW	CFA
 	DW	COMMA
 	DW	BRAN	;ELSE
-	DW	OFFSET INTE4-$
+	DW	0006H	; OFFSET INTE4-$
 INTE3	DW	CFA
 	DW	EXEC	;ENDIF
 INTE4	DW	QSTAC
 	DW	BRAN	;ELSE
-	DW	OFFSET INTE5-$
+	DW	001Ch	; OFFSET INTE5-$
 INTE2	DW	HERE
 	DW	NUMB
 	DW	DPL
 	DW	XAT
 	DW	ONEP
 	DW	ZBRAN	;IF
-	DW	OFFSET INTE6-$
+	DW	0008h	; OFFSET INTE6-$
 	DW	DLITE
 	DW	BRAN	;ELSE
-	DW	OFFSET INTE7-$
+	DW	0006h	; OFFSET INTE7-$
 INTE6	DW	DROP
 	DW	LITER	;ENDIF
 INTE7	DW	QSTAC	;ENDIF
 INTE5	DW	BRAN	;AGAIN
-	DW	OFFSET INTE1-$
+	DW	0FFC2h	; OFFSET INTE1-$
 
 ;	IMMEDIATE
 ;
@@ -2479,12 +2503,12 @@ QUIT1	DW	RPSTO	;BEGIN
 	DW	XAT
 	DW	ZEQU
 	DW	ZBRAN	;IF
-	DW	OFFSET QUIT2-$
+	DW	0007h	; OFFSET QUIT2-$
 	DW	PDOTQ
 	DB	2
 	DB	'OK'	;ENDIF
 QUIT2	DW	BRAN	;AGAIN
-	DW	OFFSET QUIT1-$
+	DW	0FFE7h	;OFFSET QUIT1-$
 ;
 ;	ABORT
 ;
@@ -2526,8 +2550,9 @@ WARM	DW	DOCOL
 ;	COLD START VECTOR COMES HERE
 ;
 XCLD:	
+	MOV	SI,OFFSET CLD1	; (IP) <-
+
 ;	XXX SMBAKER commented out the following
-;	MOV	SI,OFFSET CLD1	; (IP) <-
 ;	MOV	AX,0
 ;	MOV	DS,AX		;TO VECTOR AREA
 ;	MOV	BX,08CH
@@ -2536,16 +2561,63 @@ XCLD:
 ;	INC	BX
 ;	INC	BX
 ;	MOV	[BX],CS
-	MOV	AX,CS
+
+	MOV	AX,Main		; XXX smbaker Main should be equal to CS here
 	MOV	DS,AX		; SET DATA SEG
 	MOV	SP,WORD PTR ORIG+12H	;PARAM. STACK
 	MOV	SS,AX		; SET STACK SEGMENT
 	MOV	ES,AX		; SET EXTRA SEG
 	CLD			; DIR = INC
 	MOV	BP,RPP		; RETURN STACK
+
+	; At this point, in one run, DS=750B,SP=4FAB
+	; This is around the 500KB mark.
+	; Seems like CTOS puts us at the top of memory.
+
+	; NOTE: Two things I found out about CTOS:
+	;  1. It expects DS to be its DS when calling functions.
+	;  2. It does not like SS:SP being outside of its stack.
+
+	;MOV	AL,'A'		; XXX
+	;CALL	CHO		; XXX
+	;CALL	CI		; XXX
+	;CALL	CHO		; XXX
+	;CALL	EXIT		; XXX
+
 	JMP	NEXT
 ;
 CLD1	DW	COLD
+
+printhex        PROC    NEAR
+		push	ax
+		push	bx
+		push    cx
+
+                mov     cx,4
+print1:         push    cx
+                mov     cl, 4
+                rol     ax, cl
+                push    ax
+
+                mov     bx,ax
+                and     bl,0FH
+                add     bl,'0'
+                cmp     bl,'9'
+                jbe     print2
+                add     bl,'A'-'0'-10
+print2:
+		mov	ax,bx
+		call	CHO
+                pop     ax
+                pop     cx
+                loop    print1
+
+		pop	cx
+		pop	bx
+		pop	ax
+                ret
+printhex        ENDP
+
 ;
 ;	COLD
 ;
@@ -2600,7 +2672,7 @@ STOD1:	JMP	DPUSH
 PM	DW	DOCOL
 	DW	ZLESS
 	DW	ZBRAN	;IF
-	DW	OFFSET PM1-$
+	DW	0004h	; OFFSET PM1-$
 	DW	MINUS	;ENDIF
 PM1	DW	SEMIS
 ;
@@ -2613,7 +2685,7 @@ PM1	DW	SEMIS
 DPM	DW	DOCOL
 	DW	ZLESS
 	DW	ZBRAN	;IF
-	DW	OFFSET DPM1-$
+	DW	0004h	; OFFSET DPM1-$
 	DW	DMINU	;ENDIF
 DPM1	DW	SEMIS
 ;
@@ -2648,7 +2720,7 @@ DABS	DW	DOCOL
 MIN	DW	DOCOL,TDUP
 	DW	GREAT
 	DW	ZBRAN	;IF
-	DW	OFFSET MIN1-$
+	DW	0004h	; OFFSET MIN1-$
 	DW	SWAP	;ENDIF
 MIN1	DW	DROP
 	DW	SEMIS
@@ -2662,7 +2734,7 @@ MIN1	DW	DROP
 MAX	DW	DOCOL,TDUP
 	DW	LESS
 	DW	ZBRAN	;IF
-	DW	OFFSET MAX1-$
+	DW	0004h	;OFFSET MAX1-$
 	DW	SWAP	;ENDIF
 MAX1	DW	DROP
 	DW	SEMIS
@@ -2838,10 +2910,10 @@ MESS	DW	DOCOL
 	DW	WARN
 	DW	XAT
 	DW	ZBRAN	;IF
-	DW	OFFSET MESS1-$
+	DW	001Eh	; OFFSET MESS1-$
 	DW	DDUP
 	DW	ZBRAN	;IF
-	DW	OFFSET MESS2-$
+	DW	0014h	; OFFSET MESS2-$
 	DW	LIT,4
 	DW	OFSET
 	DW	XAT
@@ -2851,7 +2923,7 @@ MESS	DW	DOCOL
 	DW	DLINE
 	DW	SPACE	;ENDIF
 MESS2	DW	BRAN	;ELSE
-	DW	OFFSET MESS3-$
+	DW	000Dh	; OFFSET MESS3-$
 MESS1	DW	PDOTQ
 	DB	6
 	DB	'MSG # '
@@ -2967,7 +3039,7 @@ PBUF	DW	DOCOL
 	DW	PLUS,DUPE
 	DW	LIMIT,EQUAL
 	DW	ZBRAN
-	DW	OFFSET PBUF1-$
+	DW	0006h	; OFFSET PBUF1-$
 	DW	DROP,FIRST
 PBUF1	DW	DUPE,PREV
 	DW	XAT,SUBB
@@ -3021,12 +3093,12 @@ BUFFE	DW	DOCOL,USE
 	DW	TOR
 BUFF1	DW	PBUF
 	DW	ZBRAN
-	DW	OFFSET BUFF1-$
+	DW	0FFFCh	; OFFSET BUFF1-$
 	DW	USE,STORE
 	DW	RR,XAT
 	DW	ZLESS
 	DW	ZBRAN
-	DW	OFFSET BUFF2-$
+	DW	0014h	; OFFSET BUFF2-$
 	DW	RR,TWOP
 	DW	RR,XAT
 	DW	LIT,7FFFH
@@ -3051,10 +3123,10 @@ BLOCK	DW	DOCOL,OFSET
 	DW	SUBB
 	DW	DUPE,PLUS
 	DW	ZBRAN
-	DW	OFFSET BLOC1-$
+	DW	0034h	; OFFSET BLOC1-$
 BLOC2	DW	PBUF,ZEQU
 	DW	ZBRAN
-	DW	OFFSET BLOC3-$
+	DW	0014h	; OFFSET BLOC3-$
 	DW	DROP,RR
 	DW	BUFFE,DUPE
 	DW	RR,ONE
@@ -3065,7 +3137,7 @@ BLOC3	DW	DUPE,XAT
 	DW	DUPE,PLUS
 	DW	ZEQU
 	DW	ZBRAN
-	DW	OFFSET BLOC2-$
+	DW	0FFD6h	; OFFSET BLOC2-$
 	DW	DUPE,PREV
 	DW	STORE
 BLOC1	DW	FROMR,DROP
@@ -3134,9 +3206,9 @@ DOK:	POPF		;POP FLAGS
 	DB	'W'+80H
 	DW	WSEC-7
 RSLW	DW	DOCOL
-	DW	ZBRAN,OFFSET RSLW1-$
+	DW	0008h	; ZBRAN,OFFSET RSLW1-$
 	DW	RSEC
-	DW	BRAN,OFFSET RSLW2-$
+	DW	0004h	; BRAN,OFFSET RSLW2-$
 RSLW1	DW	WSEC
 RSLW2	DW	SEMIS
 
@@ -3152,7 +3224,7 @@ FLUSH	DW	DOCOL
 FLUS1	DW	ZERO,BUFFE
 	DW	DROP
 	DW	XLOOP
-	DW	OFFSET FLUS1-$
+	DW	0FFF8h	; OFFSET FLUS1-$
 	DW	SEMIS
 ;
 ;	LOAD
@@ -3284,11 +3356,7 @@ EPRINT	DB	0,0
 ;       REG AL = CHAR IF  KEY PRESSED
 ;
 CSTAT	PROC	NEAR
-	PUSH	DX
-	MOV	DX,0FFH
-	MOV	AX,0600H
-	INT	21H	; XXX
-	POP	DX
+	MOV AL, 0
 STATRT: RET
 CSTAT	ENDP
 ;
@@ -3299,16 +3367,28 @@ CSTAT	ENDP
 ; WAITS FOR KEY FROM KEYBOARD
 ;
 CI	PROC	NEAR
-	PUSH	DX
-	mov	dx, ax		; save AH for later
+
+	push	bx		; CTOS functions are terrible at destroying regs...
+	push	cx
+	push	dx
+	push	si
+	push 	di
+
+	; ---- switch from forth stack to CTOS stack ----
+	mov	ax, Dgroup
+	mov	ds, ax		; DS = dgroup
+	mov	ss, ax		; SS = dgroup
+ASSUME DS:	Dgroup
+ASSUME SS:	Dgroup
+	mov	ax, sp
+        mov     sp, offset DGroup:wLimStack
+	push 	ax		; push the old stack pointer
+	; ---- done switch from forth stack to CTOS stack ----
 
 ciagain:
-ASSUME	DS:	CTOSDGROUP
-	mov 	ax, CTOSDGROUP
-	push	ax		; push segment for bsVid
+	push	ds
 	lea     ax, bsKbd	; push offset for bsVid
 	push    ax
-ASSUME	DS:	CSEG
 	push 	ds
 	lea	ax, retChar
 	push	ax
@@ -3317,14 +3397,28 @@ ASSUME	DS:	CSEG
 	cmp	ax, 610		; XXX smbaker not sure if code 610 is returned when buffer is empty
 	je	ciagain
 
-	mov	al, [retChar]
-	mov	ah, dh		; restore ah
+	mov	dl, [retChar]	; save returned character in DL.
 
-	POP	DX
+	; ---- switch from CTOS stack to forth stack ----
+	pop	ax
+	mov	sp, ax		; restore old stack pointer
+	mov	ax, Main
+	mov	ds, ax		; DS = CS
+	mov	ss, ax		; SS = CS
+ASSUME	DS:	Main
+ASSUME	SS:	Main
+	; ---- done switch from CTOS stack to forth stack ----
+
+	mov	al, dl		; get the character back into AL
+	xor	ah, ah		; nuke ah just to be sure
+
+	pop	di
+	pop	si
+	pop	dx
+	pop	cx
+	pop	bx
 
 	RET
-
-retChar	DB	?
 
 CI	ENDP
 
@@ -3337,23 +3431,51 @@ CI	ENDP
 ; EXIT:	REG AL = CHAR
 ;
 CHO	PROC	NEAR
-	PUSH	DX
-    	PUSH	AX	;SAVE CHAR
+	push	ax		; CTOS functions are terrible at destroying regs...
+	push	bx
+	push	cx
+	push	dx
+	push	si
+	push 	di
 
-	mov	DX,AX	; char to write into DL
-	xor	DH,DH
 
-ASSUME	DS:	CTOSDGROUP
-	mov 	ax, CTOSDGROUP
-	push	ax		; push segment for bsVid
+	mov	dx,ax		; char to write into DL
+	xor	dh,dh
+
+	; ---- switch from forth stack to CTOS stack ----
+	mov	ax, Dgroup
+	mov	ds, ax		; DS = dgroup
+	mov	ss, ax		; SS = dgroup
+ASSUME DS:	Dgroup
+ASSUME SS:	Dgroup
+	mov	ax, sp
+        mov     sp, offset DGroup:wLimStack
+	push 	ax		; push the old stack pointer
+	; ---- done switch from forth stack to CTOS stack ----
+
+	push	ds		; push segment for bsVid
 	lea     ax, bsVid	; push offset for bsVid
 	push    ax
-ASSUME	DS:	CSEG
 	push    dx
 	call    writeByte
 
-	POP	AX
-	POP	DX
+	; ---- switch from CTOS stack to forth stack ----
+	pop	ax
+	mov	sp, ax		; restore old stack pointer
+	mov	ax, Main
+	mov	ds, ax		; DS = CS
+	mov	ss, ax		; SS = CS
+ASSUME	DS:	Main
+ASSUME	SS:	Main
+	; ---- done switch from CTOS stack to forth stack ----
+
+	pop	di
+	pop	si
+	pop	dx
+	pop	cx
+	pop	bx
+	pop	ax
+
 	RET
 CHO	ENDP
 ;
@@ -3620,12 +3742,12 @@ SPACS	DW	DOCOL
 	DW	MAX
 	DW	DDUP
 	DW	ZBRAN
-	DW	OFFSET SPAX1-$
+	DW	000Ch	; OFFSET SPAX1-$
 	DW	ZERO
 	DW	XDO	;DO
 SPAX2	DW	SPACE
 	DW	XLOOP	;LOOP
-	DW	OFFSET SPAX2-$
+	DW	0FFFCh	; OFFSET SPAX2-$
 SPAX1	DW	SEMIS
 ;
 ;	<#
@@ -3666,7 +3788,7 @@ SIGN	DW	DOCOL
 	DW	ROT
 	DW	ZLESS
 	DW	ZBRAN	;IF
-	DW	OFFSET SIGN1-$
+	DW	0008h	; OFFSET SIGN1-$
 	DW	LIT,2DH
 	DW	HOLD	;ENDIF
 SIGN1	DW	SEMIS
@@ -3685,7 +3807,7 @@ DIG	DW	DOCOL
 	DW	OVER
 	DW	LESS
 	DW	ZBRAN	;IF
-	DW	OFFSET DIG1-$
+	DW	0008h	; OFFSET DIG1-$
 	DW	LIT,7
 	DW	PLUS	;ENDIF
 DIG1	DW	LIT,30H
@@ -3706,7 +3828,7 @@ DIGS1	DW	DIG	;BEGIN
 	DW	ORR
 	DW	ZEQU
 	DW	ZBRAN	;UNTIL
-	DW	OFFSET DIGS1-$
+	DW	0FFF4h	; OFFSET DIGS1-$
 	DW	SEMIS
 ;
 ;	D.R.
@@ -3805,7 +3927,7 @@ VLIS1	DW	OUTT	;BEGIN
 	DW	CSLL
 	DW	GREAT
 	DW	ZBRAN	;IF
-	DW	OFFSET VLIS2-$
+	DW	000Ah	; OFFSET VLIS2-$
 	DW	CR
 	DW	ZERO
 	DW	OUTT
@@ -3822,7 +3944,7 @@ VLIS2	DW	DUPE
 	DW	QTERM
 	DW	ORR
 	DW	ZBRAN	;UNTIL
-	DW	OFFSET VLIS1-$
+	DW	0FFD4h	; OFFSET VLIS1-$
 	DW	DROP
 	DW	SEMIS
 ;
@@ -3858,10 +3980,10 @@ LIST1	DW	CR,IDO
 	DW	XAT,DLINE
 	DW	QTERM	; ?TERMINAL
 	DW	ZBRAN
-	DW	OFFSET LIST2-$	;IF
+	DW	0004h	; OFFSET LIST2-$	;IF
 	DW	LEAVE
 LIST2	DW	XLOOP
-	DW	OFFSET LIST1-$	;ENDIF
+	DW	0FFE2h	; OFFSET LIST1-$	;ENDIF
 	DW	CR,SEMIS
 ;
 ;	INDEX
@@ -3881,10 +4003,10 @@ INDE1	DW	CR,IDO
 	DW	ZERO,IDO
 	DW	DLINE,QTERM
 	DW	ZBRAN
-	DW	OFFSET INDE2-$
+	DW	0004h	; OFFSET INDE2-$
 	DW	LEAVE
 INDE2	DW	XLOOP
-	DW	OFFSET INDE1-$
+	DW	0FFE4h	; OFFSET INDE1-$
 	DW	SEMIS
 
 ;	TRIAD
@@ -3907,10 +4029,10 @@ TRIA1	DW	CR,IDO
 	DW	LISTC
 	DW	QTERM	; ?TERMINAL
 	DW	ZBRAN
-	DW	OFFSET TRIA2-$	;IF
+	DW	0004h	; OFFSET TRIA2-$	;IF
 	DW	LEAVE	;LEAVE
 TRIA2	DW	XLOOP	;ENDIF
-	DW	OFFSET TRIA1-$
+	DW	0FFF0h	; OFFSET TRIA1-$
 	DW	CR
 	DW	SEMIS
 ;
@@ -3993,7 +4115,12 @@ TASK	DW	DOCOL
 INITDP	EQU	$	;SHOW END OF DICTIONARY
 ;
 
-	ORG	EM-1	;LAST MEMORY ADDR-1
-	DB	0	;LAST LOCATION
-CSEG	ENDS
+XTSPACE	DB	16384 DUP(?)
+EM	DB	0
+
+;	ORG	EM-1	;LAST MEMORY ADDR-1
+;	DB	0	;LAST LOCATION
+Main	ENDS
 ORIG	ENDP
+
+	END	ORIG
