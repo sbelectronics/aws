@@ -1,3 +1,59 @@
+; Modifed by Scott Baker, 1/2026 to support the
+; Convergent Technologies AWS computer.
+;   https://www.smbaker.com
+; 
+;              FIG-FORTH
+;   implemented by:  Charlie Krajewski
+;                    205 ( BIG ) Blue Rd.
+;                    Middletown, CT  06457
+;   modifed by: Steven James
+;                    Goerge Hill,
+;                    High Wycombe. HP15 6BH                 
+;
+;  This implementation supports only one 64k segment
+;
+;  The listing has been made possible by the
+;  prior work of:
+;               Thomas Newman, Hayward, Ca.
+;
+; : other_acknowledgements
+;         John_Cassidy
+;         Kim_Harris
+;         George_Flammer
+;         Robert_D._Villwock ;
+; To upgrade, modify, and understand Fig Forth, the
+; value of the following book cannot be overstated:
+;         Systems Guide to FIG Forth
+;         C. H. Ting, PhD
+; It is available through MVP.  See any recent issue
+; of FORTH Dimensions for their ad.
+;
+;No one who programs with FORTH can afford to be without:
+;  Starting Forth
+;  Leo Brodie
+;Get it.  Available through FORTH Interest Group.
+;Can also be found in many book stores.
+;Chapter 3 serves as a guide for the EDITOR that you
+;will probably type in from the FIG-Forth installation
+;manual.
+;
+;Although there is much to be said for typing in your own
+;listing and getting it running, there is much to be said 
+;not typing in your own listing.  If you feel that 100+
+;pages of plinking is nutty, contact me for availability
+;of a disc with source & executable files.  Obtainable at
+;a bargain basement price, prepare yourself for bargain
+;basement support.
+;
+;All publications of the FORTH Interest Group are public domain.
+;They may be further distributed by the inclusion of this
+;credit notice:
+;               This publication has been made available by:
+;       
+;               FORTH Interest Group
+;               P.O. Box 1105
+;               San Carlos, Ca.  94070
+
 EXTRN		WriteByte:FAR, WriteBsRecord:FAR, ErrorExit:FAR, Exit:FAR, ReadByte:FAR
 
 Main	SEGMENT PARA PUBLIC 'Code'
@@ -8,8 +64,6 @@ Main            ENDS
 ; own data, since forth needs to be able to modify its own routines.
 
 Const           SEGMENT WORD PUBLIC 'Const'
-rgchMsg         DB      'Now is the time for all good men to come to the aid of their party'
-cbMsg           DW      SIZE rgchMsg
 Const           ENDS
 
 Data            SEGMENT WORD    PUBLIC 'Data'
