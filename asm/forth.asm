@@ -137,13 +137,15 @@ TNEXT3:	LODSW		; AX <- (IP)
 DPUSH:	PUSH	DX
 APUSH:	PUSH	AX
 
-NEXT:   PUSH AX		; XXX
-	MOV AX, SI
-	CALL printhex
-	MOV AL, 0ah
-	call CHO
-	call CI
-	POP AX
+NEXT:   
+	
+;	PUSH AX		; XXX
+;	MOV AX, SI
+;	CALL printhex
+;	MOV AL, 0ah
+;	call CHO
+;	call CI
+;	POP AX
 
 	LODSW		;AX <- (IP)
 
