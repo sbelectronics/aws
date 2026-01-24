@@ -3403,6 +3403,11 @@ ciagain:
 
 	mov	dl, [retChar]	; save returned character in DL.
 
+	cmp	dl, 0Ah		; forth expects lines terminated with CR, not LF
+	jne	not0A
+	mov	dl, 0Dh
+not0A:
+
 	; ---- switch from CTOS stack to forth stack ----
 	pop	ax
 	mov	sp, ax		; restore old stack pointer
