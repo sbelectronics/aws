@@ -148,7 +148,7 @@ ORIG	PROC	FAR	; SEE PG 5-31, MACRO ASSEMBLER
 ;       during cold start.
 ;       The name is 32 bits in base 32.
 ;
-	DW	5H,0B328H	; '8088'
+	DW	5H,0B326H	; '8086'
 UP	DW	INITR0	; USER AREA POINTER
 RPP	DW	INITR0	; RETURNS STACK POINTER
 
@@ -2580,8 +2580,8 @@ ABORT	DW	DOCOL
 	DW	CR
 	DW	DOTCPU
 	DW	PDOTQ
-	DB	20
-	DB	'IBM-PC Fig-Forth '
+	DB	41
+	DB	'Convergent Technologies AWS Fig-Forth '
 	DB	FIGREL+30H,ADOT,FIGREV+30H
 	DW	FORTH
 	DW	DEFIN
