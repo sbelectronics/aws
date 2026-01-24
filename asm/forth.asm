@@ -45,7 +45,8 @@ FF	EQU	0CH	; FORM FEED
 ;
 SEC_DSK	EQU	360
 PRINTER_NO	EQU	0
-;EM	EQU	04000H	; END OF MEMORY + 1
+XTOPMEM	EQU	EM	; EM is declared at the end of this file
+XBOTMEM EQU	BOTMEM	; BOTMEM is where available space starts 
 NSCR	EQU	2	; NO. 1024 BYTE SCREENS
 KBBUF	EQU	512	;DATA BYTES PER DISK BUFFER
 US	EQU	40H	; USER VARIABLE SPACE
@@ -3379,6 +3380,7 @@ CI	PROC	NEAR
 	push 	di
 
 	; ---- switch from forth stack to CTOS stack ----
+	cli
 	mov	ax, Dgroup
 	mov	ds, ax		; DS = dgroup
 	mov	ss, ax		; SS = dgroup
@@ -3387,6 +3389,7 @@ ASSUME SS:	Dgroup
 	mov	ax, sp
         mov     sp, offset DGroup:wLimStack
 	push 	ax		; push the old stack pointer
+	sti
 	; ---- done switch from forth stack to CTOS stack ----
 
 ciagain:
@@ -3409,6 +3412,7 @@ ciagain:
 not0A:
 
 	; ---- switch from CTOS stack to forth stack ----
+	cli
 	pop	ax
 	mov	sp, ax		; restore old stack pointer
 	mov	ax, Main
@@ -3416,6 +3420,7 @@ not0A:
 	mov	ss, ax		; SS = CS
 ASSUME	DS:	Main
 ASSUME	SS:	Main
+	sti
 	; ---- done switch from CTOS stack to forth stack ----
 
 	mov	al, dl		; get the character back into AL
@@ -3452,6 +3457,7 @@ CHO	PROC	NEAR
 	xor	dh,dh
 
 	; ---- switch from forth stack to CTOS stack ----
+	cli
 	mov	ax, Dgroup
 	mov	ds, ax		; DS = dgroup
 	mov	ss, ax		; SS = dgroup
@@ -3460,6 +3466,7 @@ ASSUME SS:	Dgroup
 	mov	ax, sp
         mov     sp, offset DGroup:wLimStack
 	push 	ax		; push the old stack pointer
+	sti
 	; ---- done switch from forth stack to CTOS stack ----
 
 	push	ds		; push segment for bsVid
@@ -3469,6 +3476,7 @@ ASSUME SS:	Dgroup
 	call    writeByte
 
 	; ---- switch from CTOS stack to forth stack ----
+	cli
 	pop	ax
 	mov	sp, ax		; restore old stack pointer
 	mov	ax, Main
@@ -3476,6 +3484,7 @@ ASSUME SS:	Dgroup
 	mov	ss, ax		; SS = CS
 ASSUME	DS:	Main
 ASSUME	SS:	Main
+	sti
 	; ---- done switch from CTOS stack to forth stack ----
 
 	pop	di
@@ -4124,11 +4133,15 @@ TASK	DW	DOCOL
 INITDP	EQU	$	;SHOW END OF DICTIONARY
 ;
 
-XTSPACE	DB	16384 DUP(?)
-EM	DB	0
+; Next we declare the block of dynamic memory. This is where the
+; stack, buffers, user dictionary, etc are. We can't just use an
+; "org FFFF" on it, because CTOS has other code segments to link
+; in and we would overflow. So I chose the safe approach of just
+; declaring 32KB of space.
 
-;	ORG	EM-1	;LAST MEMORY ADDR-1
-;	DB	0	;LAST LOCATION
+BOTMEM	DB	32768 DUP(?)	; Start of free space
+EM	DB	0		; End of free space
+
 Main	ENDS
 ORIG	ENDP
 
