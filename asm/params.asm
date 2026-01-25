@@ -46,7 +46,7 @@ ASSUME		CS: Main
 )
 
 %*DEFINE (CheckError(theRegister))(
-		xor	%theRegister,%theRegister
+		and	%theRegister,%theRegister
 		je	noError
 		push	%theRegister
 		call	ErrorExit

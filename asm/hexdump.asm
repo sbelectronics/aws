@@ -1,7 +1,7 @@
 ; Parameter Passing Experiment
 ; Scott Baker, https://www.smbaker.com/
 
-EXTRN		OpenByteStream:FAR, ReadBytes:FAR, WriteByte:FAR, WriteBsRecord:FAR, ErrorExit:FAR, Exit:FAR
+EXTRN		OpenByteStream:FAR, ReadByte:FAR, ReadBytes:FAR, WriteByte:FAR, WriteBsRecord:FAR, ErrorExit:FAR, Exit:FAR
 EXTRN		CParams:FAR, CSubParams:FAR, RgParam:FAR
 
 Main		SEGMENT WORD	'Code'
@@ -49,7 +49,7 @@ ASSUME		CS: Main
 )
 
 %*DEFINE (CheckError(theRegister)) LOCAL noError (
-		xor	%theRegister,%theRegister
+		and	%theRegister,%theRegister
 		je	%noError
 		push	%theRegister
 		call	ErrorExit
@@ -105,23 +105,16 @@ haveEnoughSubparams:
 
 		mov	dx, 10h			; dx is column counter
 
-blockLoop:	call	readBuffer
+readLoop:	call	readFileByte
+		mov	al, [bReadRet]
 
-		mov	cx, [cReadRet]
-		mov	si, [bReadAddrOfs]
-
-bufferLoop:	cmp	cx, 0
-		jne	gotBytes
-		jmp	blockLoop		; go read the next block
-gotBytes:	lodsb
-		call	doPrintHex2
+gotBytes:	call	doPrintHex2
 		%PrintChar(020h)
 		dec	dx
 		jnz	moreColumns
 		%PrintChar(0Ah)
 		mov	dx, 10h
-		dec	cx
-moreColumns:	jmp	bufferLoop
+moreColumns:	jmp	readLoop
 
 eof:
 		call	Exit
@@ -141,7 +134,7 @@ openFile	PROC	NEAR
 		mov	ax, 0			; length of password
 		push	ax
 
-		mov	ax, 06D77h		; Arg 4: mode. "mw" encoded as an integer.
+		mov	ax, 06D72h		; Arg 4: mode. "mr" encoded as an integer.
 		push	ax
 
 		push	ds			; Arg 5: address and size of buffer
@@ -155,27 +148,35 @@ openFile	PROC	NEAR
 		ret
 openFile	ENDP
 
-readBuffer	PROC	NEAR
+readFileByte	PROC	NEAR
+		push	ax
+		push	bx
+		push	cx
+		push	dx
+		push	si
+		push	di
+
 		push	ds			; Arg 1: address pf Byte Stream Work Area
 		lea	ax, bswa
 		push	ax
 
-		mov	ax, 010h		; Arg 2: amount of data to return
+		push	ds			; Arg 2: address of Byte
+		lea	ax, bReadRet
 		push	ax
 
-		push	ds			; Arg 3: buffer pointer
-		lea	ax, bReadAddrOfs
-		push	ax
-
-		push	ds			; Arg 4: number of characters read
-		lea	ax, cReadRet
-		push	ax
-
-		call	ReadBytes
+		call	ReadByte
 		cmp	ax, 1
 		jne	notEof
 		jmp	eof
 notEof:		%CheckError(ax)
+
+		pop	di
+		pop	si
+		pop	dx
+		pop	cx
+		pop	bx
+		pop	ax
+
 		ret
 readBuffer	ENDP
 
@@ -220,8 +221,7 @@ doPrintChar	PROC	NEAR
 		push	cx
 		push	ax
 		call	WriteByte
-		and	ax,ax
-		jne	error
+		%CheckError(ax)
 		pop 	di
 		pop	si
 		pop	dx
@@ -258,6 +258,7 @@ print2:
                 push    ax
                 push    bx
                 call    writeByte
+		%CheckError(ax)
 
                 pop     ax
                 pop     cx
@@ -301,6 +302,7 @@ print22:
                 push    ax
                 push    bx
                 call    writeByte
+		%CheckError(ax)
 
                 pop     ax
                 pop     cx
@@ -328,15 +330,15 @@ Data		SEGMENT WORD	PUBLIC	'Data'
 EXTRN		bsVid:BYTE			; existing video bytestream
 	
 cbWrittenRet	DW	?
-cReadRet	DW	?
-bReadAddrOfs	DW	?
-bReadAddrSeg	DW	?
+bReadRet	DB	?
 
 paramOfs	DW 	?
 paramSeg	DW	?
 paramLen	DW	?
 
+		EVEN
 bswa		DB	sBSWA	DUP(?)
+		EVEN
 buffer  	DB	sBuffer	DUP(?)
 
 Data		ENDS
