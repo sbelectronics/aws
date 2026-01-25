@@ -38,8 +38,16 @@ ASSUME		CS: Main
 %*DEFINE (PrintHex(theValue))(
 		push	ax
 		mov	ax, %theValue
-		call	doPrintChar
+		call	doPrintHex
 		pop	ax
+)
+
+%*DEFINE (CheckError(theRegister))(
+		xor	%theRegister,%theRegister
+		je	noError
+		push	%theRegister
+		call	ErrorExit
+noError:
 )
 
 Begin:		mov 	ax, Dgroup
@@ -51,9 +59,85 @@ ASSUME		SS: Dgroup
 ASSUME		DS: Dgroup
 
 		%PrintString(banner, bannerLen)
-		mov	ax, 1234h
-		%PrintHex(ax)
+
+		%PrintString(strNumParams, lenNumParams)
+
+		call	CParams
+		%PrintHex(AX)
 		%PrintChar(0Ah)
+
+		mov 	cx,ax			; CX will count number of parameters
+		xor	bx,bx			; BX will be parameter index
+paramLoop:	%PrintString(strParam,lenParam)
+		%PrintHex(bx)
+		%PrintString(strSubParams,lenSubParams)
+		push	cx			; save loop counter
+		push	bx			; save index
+		push    bx			; push parameter index
+		call    CSubParams
+		%PrintHex(AX)
+		%PrintChar(0Ah)
+		pop	bx			; restore index
+
+		mov	cx, ax			; number of subparameters to cx
+		cmp	cx, 0
+		jne	hasSubParams
+		jmp	noSubParams
+hasSubParams:
+
+		xor	dx,dx			; subparameter index to 0
+subParamLoop:	push	bx			; save parameter index
+		push	cx			; save subParameter count
+		push	dx			; save subParameter index
+
+		push	bx			; param0 - parameter index
+		push	dx			; param1 - subparameter index
+		push	ds
+		lea	ax, paramOfs
+		push	ax
+		call 	RgParam
+		%CheckError(AX)
+
+		%PrintString(strSubIndent,lenSubIndent)
+
+		%PrintHex(paramSeg)
+		%PrintChar(020h)
+		%PrintHex(paramOfs)
+		%PrintChar(020h)		
+		%PrintHex(paramLen)
+		%PrintChar(020h)
+
+		push	ds
+		lea	ax, bsVid
+		push	ax
+		push	paramSeg		; push segment and offset of string
+		push	paramOfs
+		push	paramLen		; push length of string
+		push 	ds			; push address of cbWrittenRet
+		lea	ax, cbWrittenRet
+		push	ax
+		call	WriteBsRecord
+
+		%PrintChar(0Ah)
+
+		pop	dx
+		pop	cx
+		pop	bx
+		inc	dx
+		dec	cx
+		jz	outSubParamLoop
+		jmp	subParamLoop
+outSubParamLoop:
+
+noSubParams:
+		pop	cx
+		inc	bx
+		dec	cx
+		jz	outParamLoop
+		jmp	paramLoop
+outParamLoop:
+
+		%PrintString(strDone, lenDone)
 
 		call	Exit
 
@@ -161,12 +245,32 @@ EXTRN		bsVid:BYTE			; existing video bytestream
 	
 cbWrittenRet	DW	?
 
+paramOfs	DW 	?
+paramSeg	DW	?
+paramLen	DW	?
+
+
 Data		ENDS
 
 Const		SEGMENT WORD	PUBLIC	'Const'
 
 banner		DB	'Parameter Passing Demo',0Ah
 bannerLen	DW	SIZE banner
+
+strNumParams	DB	'Number of Parameters: '
+lenNumParams	DW	SIZE strNumParams
+
+strDone		DB	'Done',0Ah
+lenDone		DW	SIZE strDone
+
+strParam	DB	'Param: '
+lenParam	DW	SIZE strParam
+
+strSubParams	DB	' SubParams: '
+lenSubParams	DW	SIZE strSubParams
+
+strSubIndent	DB	'  > '
+lenSubIndent	DW	SIZE strSubIndent
 
 Const 		ENDS
 
