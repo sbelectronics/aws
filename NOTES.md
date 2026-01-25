@@ -82,3 +82,21 @@ Interrupts on 8259
     6 - disk
 
 CPU board interrupts are set using Write Register 2
+
+Adding Basic
+    AWS image already had basic command, but was missing Basic.Run
+    Copied Basic.Run from Disk #79
+        Copy
+            From: [F0]<sys>Basic.Run
+            To: <sys>Basic.Run
+
+Basic Notes:
+   V! = MAKEPOINTER(seg,ofs)
+   PEEK("B", pointer) or PEEK("W", pointer)
+
+
+Turning off screen pause
+   0FFh, 'P', 'F'
+
+Turning on screen pause
+   0FFh, 'P', 'N'
