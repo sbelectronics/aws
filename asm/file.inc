@@ -1,3 +1,8 @@
+; Functions for working with files.
+; Scott Baker, https://www.smbaker.com/
+;
+; Assumes "buffer", "sBuffer", "bwsa", and "sBwsa" are defined elsewhere.
+
 openFile	PROC	NEAR
 		push	ds			; Arg 1: address pf Byte Stream Work Area
 		lea	ax, bswa
@@ -45,9 +50,9 @@ readFileByte	PROC	NEAR
 
 		call	ReadByte
 		cmp	ax, 1
-		jne	notEof
+		jne	rfbNotEof
 		jmp	eof
-notEof:		%CheckError(ax)
+rfbNotEof:	%CheckError(ax)
 
 		pop	di
 		pop	si

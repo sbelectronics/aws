@@ -89,9 +89,6 @@ moreColumns:	jmp	readLoop
 eof:
 		call	Exit
 
-error:		push	ax
-		call	ErrorExit
-
 insufficientParams:
 		%PrintString(strInsuff,lenInsuff)
 		call	Exit
@@ -122,7 +119,6 @@ Data		ENDS
 Const		SEGMENT WORD	PUBLIC	'Const'
 
 password	DB	0
-
 paramNum	DW	1
 subParamNum	DW	0
 

@@ -1,3 +1,6 @@
+; Functions for printing stuff.
+; Scott Baker, https://www.smbaker.com/
+
 		; doPrintstring
 		;    ax contains offset of string
 		;    bx contains length of string

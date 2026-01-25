@@ -29,3 +29,28 @@
 		call	ErrorExit
 %noError:
 )
+
+%*DEFINE (SetCTOSSegments(theGroup, theStack)) (
+		cli
+		mov	ax, %theGroup
+		mov	ds, ax		; DS = dgroup
+		mov	ss, ax		; SS = dgroup
+ASSUME DS:	%theGroup
+ASSUME SS:	%theGroup
+		mov	ax, sp
+        	mov	SP, OFFSET %theGroup:%theStack
+		push 	ax		; push the old stack pointer
+		sti
+)
+
+%*DEFINE (RestoreSegments(theGroup)) (
+	cli
+	pop	ax
+	mov	sp, ax		; restore old stack pointer
+	mov	ax, %theGroup
+	mov	ds, ax		; DS = CS
+	mov	ss, ax		; SS = CS
+ASSUME	DS:	%theGroup
+ASSUME	SS:	%theGroup
+	sti
+)

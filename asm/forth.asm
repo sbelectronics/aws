@@ -3485,18 +3485,7 @@ CI	PROC	NEAR
 	push	si
 	push 	di
 
-	; ---- switch from forth stack to CTOS stack ----
-	cli
-	mov	ax, Dgroup
-	mov	ds, ax		; DS = dgroup
-	mov	ss, ax		; SS = dgroup
-ASSUME DS:	Dgroup
-ASSUME SS:	Dgroup
-	mov	ax, sp
-        mov     sp, offset DGroup:wLimStack
-	push 	ax		; push the old stack pointer
-	sti
-	; ---- done switch from forth stack to CTOS stack ----
+	%SetCTOSSegments(DGroup,wLimStack)
 
 	mov	al, [inputFileOpen]	; are we reading from a file?
 	cmp	al, 1
@@ -3543,18 +3532,7 @@ gotInputChar:
 	jne	not0A
 	mov	dl, 0Dh
 not0A:
-
-	; ---- switch from CTOS stack to forth stack ----
-	cli
-	pop	ax
-	mov	sp, ax		; restore old stack pointer
-	mov	ax, Main
-	mov	ds, ax		; DS = CS
-	mov	ss, ax		; SS = CS
-ASSUME	DS:	Main
-ASSUME	SS:	Main
-	sti
-	; ---- done switch from CTOS stack to forth stack ----
+	%RestoreSegments(Main)
 
 	mov	al, dl		; get the character back into AL
 	xor	ah, ah		; nuke ah just to be sure
@@ -3588,18 +3566,7 @@ CHO	PROC	NEAR
 	mov	dx,ax		; char to write into DL
 	xor	dh,dh
 
-	; ---- switch from forth stack to CTOS stack ----
-	cli
-	mov	ax, Dgroup
-	mov	ds, ax		; DS = dgroup
-	mov	ss, ax		; SS = dgroup
-ASSUME DS:	Dgroup
-ASSUME SS:	Dgroup
-	mov	ax, sp
-        mov     sp, offset DGroup:wLimStack
-	push 	ax		; push the old stack pointer
-	sti
-	; ---- done switch from forth stack to CTOS stack ----
+	%SetCTOSSegments(DGroup,wLimStack)
 
 	push	ds		; push segment for bsVid
 	lea     ax, bsVid	; push offset for bsVid
@@ -3607,17 +3574,7 @@ ASSUME SS:	Dgroup
 	push    dx
 	call    writeByte
 
-	; ---- switch from CTOS stack to forth stack ----
-	cli
-	pop	ax
-	mov	sp, ax		; restore old stack pointer
-	mov	ax, Main
-	mov	ds, ax		; DS = CS
-	mov	ss, ax		; SS = CS
-ASSUME	DS:	Main
-ASSUME	SS:	Main
-	sti
-	; ---- done switch from CTOS stack to forth stack ----
+	%RestoreSegments(Main)
 
 	pop	di
 	pop	si
