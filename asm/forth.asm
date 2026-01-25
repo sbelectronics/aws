@@ -54,16 +54,25 @@
 ;               P.O. Box 1105
 ;               San Carlos, Ca.  94070
 
-EXTRN		WriteByte:FAR, WriteBsRecord:FAR, ErrorExit:FAR, Exit:FAR, ReadByte:FAR
+EXTRN		OpenByteStream:FAR, WriteByte:FAR, WriteBsRecord:FAR, ErrorExit:FAR, Exit:FAR, ReadByte:FAR
+EXTRN		CParams:FAR, CSubParams:FAR, RgParam:FAR
+
+sBSWA		EQU	130
+sBuffer		EQU	1024
 
 Main	SEGMENT PARA PUBLIC 'Code'
 Main            ENDS
+
+$INCLUDE(macros.inc)
 
 ; Data is only used to make use of bsVid and bsKbd, which are
 ; located in the SAM data segment. We will assume that CS=DS=ES for our
 ; own data, since forth needs to be able to modify its own routines.
 
 Const           SEGMENT WORD PUBLIC 'Const'
+password	DB	0
+paramNum	DW	1
+subParamNum	DW	0
 Const           ENDS
 
 Data            SEGMENT WORD    PUBLIC 'Data'
@@ -71,6 +80,15 @@ EXTRN           bsVid:BYTE
 EXTRN		bsKbd:BYTE
 cbWrittenRet    DW      ?
 retChar		DB	?
+bReadRet	DB	?	; not used, required by file.inc
+paramOfs	DW 	?
+paramSeg	DW	?
+paramLen	DW	?
+inputFileOpen	DB	?
+		EVEN
+bswa		DB	sBSWA	DUP(?)
+		EVEN
+buffer  	DB	sBuffer	DUP(?)
 Data            ENDS
 
 Stack           SEGMENT STACK   'Stack'
@@ -2606,26 +2624,12 @@ WARM	DW	DOCOL
 ;
 ;	COLD START VECTOR COMES HERE
 ;
-XCLD:	
-	MOV	SI,OFFSET CLD1	; (IP) <-
-
-;	XXX SMBAKER commented out the following
-;	MOV	AX,0
-;	MOV	DS,AX		;TO VECTOR AREA
-;	MOV	BX,08CH
-;	LEA	AX,WRM
-;	MOV	[BX],AX		;JUMP TO WRM ON <CTRL-BREAK>
-;	INC	BX
-;	INC	BX
-;	MOV	[BX],CS
-
-	MOV	AX,Main		; XXX smbaker Main should be equal to CS here
+XCLD:	MOV	AX,Main		; XXX smbaker Main should be equal to CS here
 	MOV	DS,AX		; SET DATA SEG
 	MOV	SP,WORD PTR ORIG+12H	;PARAM. STACK
 	MOV	SS,AX		; SET STACK SEGMENT
 	MOV	ES,AX		; SET EXTRA SEG
-	CLD			; DIR = INC
-	MOV	BP,RPP		; RETURN STACK
+
 
 	; At this point, in one run, DS=750B,SP=4FAB
 	; This is around the 500KB mark.
@@ -2641,9 +2645,57 @@ XCLD:
 	;CALL	CHO		; XXX
 	;CALL	EXIT		; XXX
 
+	CALL	OpenInputFile
+
+	CLD			; DIR = INC
+	MOV	BP,RPP		; RETURN STACK
+	MOV	SI,OFFSET CLD1	; (IP) <-
 	JMP	NEXT
 ;
 CLD1	DW	COLD
+
+		ASSUME DS: Dgroup
+		ASSUME SS: Dgroup
+$INCLUDE(file.inc)
+		ASSUME DS: Main
+		ASSUME SS: Main
+
+		; Read command line arg, open and prepare to read input file, if any.
+		; This does not preserve any registers.
+
+openInputFile	PROC	NEAR
+		%SetCTOSSegments(DGroup,wLimStack)	; everything in this func is inside CTOS segments
+
+		mov	[inputFileOpen], 0
+
+		call	CParams
+		cmp	ax, 1
+		jge	haveEnoughParams
+		jmp	oifOut			; no filename parameter - return
+haveEnoughParams:
+		push	paramNum
+		call	CSubParams
+		cmp	ax, 1
+		jge	haveEnoughSubParams
+		jmp	oifOut			; no filename parameter - return
+haveEnoughSubparams:
+		push	paramNum		; parameter index 1
+		push	subParamNum		; subparameter index 0
+		push	ds
+		lea	ax, paramOfs
+		push	ax
+		call 	RgParam
+		%CheckError(ax)
+
+		call	openFile
+
+		mov	[inputFileOpen], 1	; remember we're reading from the file
+
+oifOut:		%RestoreSegments(Main)
+		ret
+openInputFile	ENDP
+
+		; printhex - prints 16-bit hex value in AX
 
 printhex        PROC    NEAR
 		push	ax
@@ -3446,6 +3498,32 @@ ASSUME SS:	Dgroup
 	sti
 	; ---- done switch from forth stack to CTOS stack ----
 
+	mov	al, [inputFileOpen]	; are we reading from a file?
+	cmp	al, 1
+	je 	inputFromFile
+	jmp	inputfromKeyboard
+inputFromFile:
+	push	ds			; Arg 1: address pf Byte Stream Work Area
+	lea	ax, bswa
+	push	ax
+
+	push	ds			; Arg 2: address of Byte
+	lea	ax, retChar
+	push	ax
+
+	call	ReadByte
+	cmp	ax, 1
+	jne	notEof
+	jmp	eof
+notEof:		
+	%CheckError(ax)
+	jmp	gotInputChar
+
+eof:	mov 	al, 0
+	mov 	[inputFileOpen], al
+	jmp	inputFromKeyboard
+
+inputFromKeyboard:
 ciagain:
 	push	ds
 	lea     ax, bsKbd	; push offset for bsVid
@@ -3458,6 +3536,7 @@ ciagain:
 	cmp	ax, 610		; XXX smbaker not sure if code 610 is returned when buffer is empty
 	je	ciagain
 
+gotInputChar:
 	mov	dl, [retChar]	; save returned character in DL.
 
 	cmp	dl, 0Ah		; forth expects lines terminated with CR, not LF
@@ -3505,7 +3584,6 @@ CHO	PROC	NEAR
 	push	dx
 	push	si
 	push 	di
-
 
 	mov	dx,ax		; char to write into DL
 	xor	dh,dh
