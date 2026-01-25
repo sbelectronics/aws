@@ -1,3 +1,6 @@
+; Parameter Passing Experiment
+; Scott Baker, https://www.smbaker.com/
+
 EXTRN		OpenByteStream:FAR, WriteByte:FAR, WriteBsRecord:FAR, ErrorExit:FAR, Exit:FAR
 EXTRN		CParams:FAR, CSubParams:FAR, RgParam:FAR
 
