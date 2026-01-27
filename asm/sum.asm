@@ -1,5 +1,9 @@
 ; Checksum Tool
 ; Scott Baker, https://www.smbaker.com/
+;
+; Implements the SYSV checksum, which is adding up all the
+; bytes into a 32-bit accumulator, then "folding" the high word
+; into the low word.
 
 EXTRN		OpenByteStream:FAR, ReadByte:FAR, ReadBytes:FAR, WriteByte:FAR, WriteBsRecord:FAR, ErrorExit:FAR, Exit:FAR
 EXTRN		CParams:FAR, CSubParams:FAR, RgParam:FAR
@@ -73,16 +77,20 @@ haveEnoughSubparams:
 
 		call	openFile
 
-		xor	dx, dx			; dx will hold checksum
+		xor	dx, dx			; dx:bx will hold checksum
+		xor	bx, bx
 
 readLoop:	call	readFileByte
 		xor	ah, ah
 		mov	al, [bReadRet]
-		add	dx,ax
+		add	bx, ax
+		adc	dx, 0
 		jmp 	readLoop
 
 eof:
-		%PrintHex(dx)
+		add	bx, dx
+		adc	bx, 0
+		%PrintHex(bx)
 		%PrintChar(0Ah)
 		call	Exit
 
