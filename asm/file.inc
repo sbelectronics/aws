@@ -51,7 +51,15 @@ readFileByte	PROC	NEAR
 		call	ReadByte
 		cmp	ax, 1
 		jne	rfbNotEof
+		
+		pop	di
+		pop	si
+		pop	dx
+		pop	cx
+		pop	bx
+		pop	ax		
 		jmp	eof
+
 rfbNotEof:	%CheckError(ax)
 
 		pop	di

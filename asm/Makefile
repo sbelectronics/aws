@@ -7,3 +7,4 @@ copyup:
 	python ../../ctostool/ctostool.py ../../converted/img/DSKA0264-incoming-aws2.img replace baker forth.asm forth.asm
 	python ../../ctostool/ctostool.py ../../converted/img/DSKA0264-incoming-aws2.img replace baker params.asm params.asm
 	python ../../ctostool/ctostool.py ../../converted/img/DSKA0264-incoming-aws2.img replace baker hexdump.asm hexdump.asm
+	python ../../ctostool/ctostool.py ../../converted/img/DSKA0264-incoming-aws2.img replace baker sum.asm sum.asm
