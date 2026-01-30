@@ -19,8 +19,8 @@ STACK 		ENDS
 
 Dgroup		GROUP	Const, Data, Stack
 
-COLS		EQU	78
-ROWS		EQU	20
+COLS		EQU	79
+ROWS		EQU	21
 WALL		EQU	'X'  ; character to use for walls
 PATH		EQU	' '  ; character to use for paths
 
@@ -68,6 +68,15 @@ mazeLoop:
 		jmp	mazeLoop
 
 mazeDone:
+		; Create Entry at (0, 1)
+		mov	ax, 0
+		mov	bx, 1
+		call	setPath
+
+		; Create Exit at (COLS-1, ROWS-2)
+		mov	ax, COLS-1
+		mov	bx, ROWS-2
+		call	setPath
 	
 		call	printGrid
 
@@ -215,11 +224,11 @@ isValidNeighbor	PROC	NEAR
 		; Check bounds
 		cmp	ax, 1
 		jl	invalid
-		cmp	ax, COLS-1
+		cmp	ax, COLS-2
 		jg	invalid
 		cmp	bx, 1
 		jl	invalid
-		cmp	bx, ROWS-1
+		cmp	bx, ROWS-2
 		jg	invalid
 		
 		; Check if unvisited (is WALL)
