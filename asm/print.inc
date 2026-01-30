@@ -136,3 +136,51 @@ print22:
 		pop	bx
                 ret
 doPrinthex2     ENDP
+
+		; enableLiteral - disables special escape sequences
+
+enableLiteral	PROC	NEAR
+		mov 	ax,0FFh
+		call	doPrintChar
+		mov	ax,'L'
+		call	doPrintChar
+		mov	ax,'N'
+		call	doPrintChar
+		ret
+enableLiteral	ENDP
+
+		; disableLiteral - stops special escape sequences
+
+disableLiteral	PROC	NEAR
+		mov 	ax,0FFh
+		call	doPrintChar
+		mov	ax,'L'
+		call	doPrintChar
+		mov	ax,'F'
+		call	doPrintChar
+		ret
+disableLiteral	ENDP
+
+		; enablePause - enable automatic screen pause
+
+enablePause	PROC	NEAR
+		mov 	ax,0FFh
+		call	doPrintChar
+		mov	ax,'P'
+		call	doPrintChar
+		mov	ax,'N'
+		call	doPrintChar
+		ret
+enablePause	ENDP
+
+		; disablePaise - disable automatic screen pause
+
+disablePause	PROC	NEAR
+		mov 	ax,0FFh
+		call	doPrintChar
+		mov	ax,'P'
+		call	doPrintChar
+		mov	ax,'F'
+		call	doPrintChar
+		ret
+disablePause	ENDP
