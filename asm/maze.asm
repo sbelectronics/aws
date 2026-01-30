@@ -41,6 +41,8 @@ ASSUME		DS: Dgroup
 
 		%PrintString(banner, bannerLen)
 
+		call	getSeed
+
 		; Initialize grid
 		call	initGrid
 
@@ -418,6 +420,55 @@ Rand		PROC	NEAR
 		ret
 Rand		ENDP
 
+;-----------------------------------------
+; Get Seed from Params
+;-----------------------------------------
+
+getSeed		PROC	NEAR
+		call	CParams
+		cmp	ax, 1
+		jge	haveEnoughParams
+		jmp	gsOut			; no seed parameter - return
+haveEnoughParams:
+		push	paramNum
+		call	CSubParams
+		cmp	ax, 1
+		jge	haveEnoughSubParams
+		jmp	gsOut			; no seed parameter - return
+haveEnoughSubparams:
+		push	paramNum		; parameter index 1
+		push	subParamNum		; subparameter index 0
+		push	ds
+		lea	ax, paramOfs
+		push	ax
+		call 	RgParam
+		%CheckError(ax)
+
+		; INSERT CODE TO CONVERT STRING in paramOfs to integer
+		mov	es, paramSeg
+		mov	si, paramOfs
+		mov	cx, paramLen
+		jcxz	gsOut		; if len is 0, skip
+		
+		xor	bx, bx		; Accumulator = 0
+		
+seedLoop:	mov	ax, bx
+		mov	dx, 10
+		mul	dx		; AX = BX * 10
+		mov	bx, ax
+		
+		xor	ax, ax
+		mov	al, es:[si]	; Get char
+		sub	al, '0'		; Convert to int
+		add	bx, ax		; Add to accumulator
+		
+		inc	si
+		loop	seedLoop
+		
+		mov	randSeed, bx
+gsOut:		ret
+getSeed 	ENDP
+
 $INCLUDE(print.inc)
 
 Main		ENDS
@@ -435,6 +486,10 @@ neighborArr	DB	4 DUP(?)
 stackBuf	DW	4000 DUP(?) 
 stackPtr	DW	0
 
+paramOfs	DW 	?
+paramSeg	DW	?
+paramLen	DW	?
+
 Data		ENDS
 
 Const		SEGMENT WORD	PUBLIC	'Const'
@@ -443,6 +498,9 @@ randSeed	DW	12345
 
 banner		DB	'Maze Generator',0Ah
 bannerLen	DW	SIZE banner
+
+paramNum	DW	1
+subParamNum	DW	0
 
 Const 		ENDS
 
