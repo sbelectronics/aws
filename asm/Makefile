@@ -9,3 +9,7 @@ copyup:
 	python ../../ctostool/ctostool.py ../../converted/img/DSKA0264-incoming-aws2.img replace baker hexdump.asm hexdump.asm
 	python ../../ctostool/ctostool.py ../../converted/img/DSKA0264-incoming-aws2.img replace baker sum.asm sum.asm
 	python ../../ctostool/ctostool.py ../../converted/img/DSKA0264-incoming-aws2.img replace baker crc.asm crc.asm
+	python ../../ctostool/ctostool.py ../../converted/img/DSKA0264-incoming-aws2.img replace baker maze.asm maze.asm
+
+imgup:
+	scp ../../converted/img/DSKA0264-incoming-aws2.img smbaker@pi-gotek.lan:/mnt/usb_drive/files/
