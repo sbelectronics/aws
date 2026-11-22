@@ -59,19 +59,52 @@ extern ErcType __far SetFileStatus(unsigned fh, unsigned statusCode, const void 
 #define ercEOF          1
 #define ercNoSuchFile   203
 
-/* Memory and time */
+/* Directories. ReadDirSector reads page iSector (512 bytes) of a directory. */
+extern ErcType __far CreateDir(const char __far *pbDirSpec, unsigned cbDirSpec,
+                               const char __far *pbVolPassword, unsigned cbVolPassword,
+                               const char __far *pbDirPassword, unsigned cbDirPassword,
+                               unsigned cSectors, unsigned defaultFileProtectionLevel);
+extern ErcType __far DeleteDir(const char __far *pbDirSpec, unsigned cbDirSpec,
+                               const char __far *pbPassword, unsigned cbPassword);
+extern ErcType __far ReadDirSector(const char __far *pbDirSpec, unsigned cbDirSpec,
+                                   const char __far *pbPassword, unsigned cbPassword,
+                                   unsigned iSector, void __far *pBufferRet);
+#pragma aux (CTOSCALL) CreateDir;
+#pragma aux (CTOSCALL) DeleteDir;
+#pragma aux (CTOSCALL) ReadDirSector;
+
+/* Memory. Short-lived memory goes when the program ends; long-lived memory
+ * survives Chain. Short-lived segments are freed in the reverse order of
+ * allocation. A segment's offset is always 0. */
 extern ErcType __far AllocMemorySL(unsigned cbSegment, void __far * __far *ppSegmentRet);
-extern ErcType __far GetDateTime(unsigned long __far *pDateTimeRet);
+extern ErcType __far DeallocMemorySL(void __far *pSegment, unsigned cbSegment);
+extern ErcType __far AllocMemoryLL(unsigned cbSegment, void __far * __far *ppSegmentRet);
+extern ErcType __far QueryMemAvail(unsigned __far *pcParagraphRet);
 #pragma aux (CTOSCALL) AllocMemorySL;
+#pragma aux (CTOSCALL) DeallocMemorySL;
+#pragma aux (CTOSCALL) AllocMemoryLL;
+#pragma aux (CTOSCALL) QueryMemAvail;
+
+/* Time */
+extern ErcType __far GetDateTime(unsigned long __far *pDateTimeRet);
 #pragma aux (CTOSCALL) GetDateTime;
+
+/* Replaces this program with the run file. Long-lived memory, which holds
+ * the parameter block, is kept. priority: 0 (highest) to 254. */
+extern ErcType __far Chain(const char __far *pbFileSpec, unsigned cbFileSpec,
+                           const char __far *pbPassword, unsigned cbPassword,
+                           unsigned priority, ErcType ercTermination, unsigned fDebug);
+#pragma aux (CTOSCALL) Chain;
 
 /* Keyboard. ReadKbdDirect mode 1 returns at once, with ercNoCharAvailable if no
  * key is waiting; mode 0 waits. */
 extern ErcType __far ReadKbd(char __far *pCharRet);
 extern ErcType __far ReadKbdDirect(unsigned mode, char __far *pCharRet);
+extern ErcType __far SetKbdUnencodedMode(unsigned fOn);
 extern ErcType __far Beep(void);
 #pragma aux (CTOSCALL) ReadKbd;
 #pragma aux (CTOSCALL) ReadKbdDirect;
+#pragma aux (CTOSCALL) SetKbdUnencodedMode;
 #pragma aux (CTOSCALL) Beep;
 
 #define ercNoCharAvailable 602
@@ -95,13 +128,22 @@ extern ErcType __far ScrollFrame(unsigned frame, unsigned firstLine, unsigned li
 #pragma aux (CTOSCALL) ResetFrame;
 #pragma aux (CTOSCALL) ScrollFrame;
 
+/* LoadFontRam loads the character shapes from an open font file, where the
+ * font is in RAM (the NGEN, not the AWS). SetScreenVidAttr(1, 0) turns the
+ * display off and (1, 0xFF) on again, for while it's loading. */
+extern ErcType __far LoadFontRam(unsigned fh, void __far *pBuffer, unsigned sBuffer);
+extern ErcType __far SetScreenVidAttr(unsigned iAttr, unsigned fOn);
+#pragma aux (CTOSCALL) LoadFontRam;
+#pragma aux (CTOSCALL) SetScreenVidAttr;
+
 /* Character attributes for PutFrameAttrs */
 #define attrHalfBright 1
 #define attrUnderline  2
 #define attrReverse    4
 #define attrBlink      8
 
-/* Parameters: the ASCB's word at offset 2 points to the Variable-Length Parameter Block */
+/* Parameters: the far pointer at offset 2 of the ASCB points to the
+ * Variable-Length Parameter Block */
 extern ErcType __far GetpASCB(void __far * __far *ppAscbRet);
 #pragma aux (CTOSCALL) GetpASCB;
 

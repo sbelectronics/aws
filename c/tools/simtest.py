@@ -22,11 +22,14 @@ HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BUILD = os.path.join(HERE, 'build')
 
 # Each test: the arguments for Run's [Param n] fields; what to type once the
-# program is running (seconds after GO, text); raw AWS key codes to press
-# (seconds after GO, hex); how long to let it run; and regular expressions
-# the output must match, anywhere ('out') or as a whole screen line at some
-# point ('screen', and 'screen_aws' on the AWS only). The final screen isn't
+# program is running (seconds after GO, text; 'type_ngen' on the NGEN only);
+# raw AWS key codes to press (seconds after GO, hex; ngensim can only type);
+# how long to let it run; and regular expressions the output must match,
+# anywhere ('out') or as a whole screen line at some point ('screen', and
+# 'screen_aws' or 'screen_ngen' on one machine). The final screen isn't
 # enough: when a program ends, the Executive scrolls its top lines away.
+# 'serialin' is text arriving at a serial port (seconds after GO, port,
+# text), and 'sent' what the program must send from port A.
 TESTS = {
     'selftest': dict(run=40, out=[r'selftest: \d+ checks, 0 failed']),
     'hello': dict(type=[(20, 'Scott\\n')], run=40,
@@ -37,14 +40,28 @@ TESTS = {
                      out=[r'filetest: \d+ checks, 0 failed',
                           re.escape('argc 4: [] [[f0]<C>] [two] [words]')],
                      keep=b'The quick brown fox.\n' * 3),
-    'screentest': dict(type=[(20, 'ab'), (30, '\\n')], awskeys=[(24, 0x01), (25, 0x0B), (26, 0x0E), (27, 0x0F)],
-                       run=45,
+    'screentest': dict(type=[(20, 'ab'), (30, '\\n')], type_ngen=[(34, 'cd')],
+                       awskeys=[(24, 0x01), (25, 0x0B), (26, 0x0E), (27, 0x0F),
+                                (34, 0x01), (35, 0x0B)],
+                       run=55,
                        screen=[r'^.{30}screen test', r'^rows \d+', r'^.{75}clipp$', r'^poll -1',
                                r'^delay [234]$',
                                r'^date \w{3} \w{3} [ \d]\d \d\d:\d\d:\d\d (1983|1987)$',
                                r'^printf on line 8$', r'^bottom line$'],
-                       screen_aws=[r'^keys: 61 62 01 0B 0E 12$'],
-                       screen_ngen=[r'^keys: 61 62$']),
+                       screen_aws=[r'^keys: 61 62 01 0B 0E 12$', r'^raw: 01 81 0B 8B$'],
+                       screen_ngen=[r'^keys: 61 62$', r'^raw:( [0-9A-F]{2}){4}$']),
+    'ctostest': dict(params=['[f0]'], run=90,
+                     out=[r'ctostest: \d+ checks, 0 failed',
+                          re.escape('argc 3: [filetest] [[f0]<C>] [via execv]'),
+                          r'filetest: \d+ checks, 0 failed'],
+                     keep=b'The quick brown fox.\n' * 3),
+    'charset': dict(type=[(15, '\\n')], run=30, screen=[r'a box']),
+    'fonttest': dict(params=['[f0]<C>'], type=[(20, '\\n')], run=45,
+                     screen_ngen=[r'^load 0, restore 0$'],
+                     screen_aws=[r'^load -?\d+, restore -?\d+$']),
+    'sertest': dict(serialin=[(10, 'A', 'ping from the far end\\n')], run=30,
+                    out=[r'got: ping from the far end', r'sertest done'],
+                    sent='hello serial\r\necho: ping from the far end\r\n'),
 }
 
 MACHINES = {
@@ -83,7 +100,7 @@ def typing(machine, test, spec):
         t += 2 + len(text) * 0.3     # typing takes about 0.2 s a character
         t = int(t + 0.99)
     go = t
-    for dt, text in spec.get('type', []):
+    for dt, text in spec.get('type', []) + spec.get('type_' + machine, []):
         parts.append('%d:%s' % (go + dt, text))
     return ';'.join(parts), go, go + spec['run']
 
@@ -106,6 +123,10 @@ def check(machine, test, spec, log, floppy):
     for line in log.splitlines():
         if '80186 instruction' in line:
             problems.append(line.strip())
+    if 'sent' in spec:
+        sent = ''.join(chr(int(h, 16)) for h in re.findall(r'serial A sent ([0-9A-F]{2})', log))
+        if spec['sent'] not in sent:
+            problems.append('sent %r on port A' % sent[:80])
     if 'keep' in spec:
         try:
             got = ctostool([floppy, 'extract', 'C', 'keep.txt'])
@@ -134,6 +155,7 @@ def main():
     for t in tests:
         if t not in TESTS:
             sys.exit('simtest: no test %s' % t)
+    for t in TESTS:
         if not os.path.exists(os.path.join(BUILD, t + '.run')):
             sys.exit('simtest: %s.run isn\'t built (run make)' % t)
 
@@ -142,7 +164,8 @@ def main():
     blank = os.path.join(work, 'c.img')
     with gzip.open(os.path.join(HERE, 'test', 'blank.img.gz')) as f, open(blank, 'wb') as g:
         g.write(f.read())
-    for t in tests:
+    # every program goes on, since one can run another (ctostest runs filetest)
+    for t in TESTS:
         ctostool([blank, 'add', 'C', t + '.run', os.path.join(BUILD, t + '.run')])
 
     runs = []
@@ -157,6 +180,9 @@ def main():
             script, go, stop = typing(m, t, spec)
             args = [exe, '-floppy', floppy, '-flsave', after, '-seconds', str(stop),
                     '-type', script] + opts
+            if spec.get('serialin'):
+                args += ['-serial', '-serialin',
+                         ';'.join('%d:%s:%s' % (go + dt, port, text) for dt, port, text in spec['serialin'])]
             if m == 'aws' and spec.get('awskeys'):
                 args += ['-keys', ','.join('%d:%x' % (go + dt, k) for dt, k in spec['awskeys'])]
             logname = os.path.join(work, '%s-%s.log' % (m, t))

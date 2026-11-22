@@ -16,7 +16,8 @@ include ctos.mk
 B        = $(CTOS_C)/build
 LIBOBJ   = $(addprefix $(B)/,start.obj console.obj file.obj printf.obj scanf.obj \
            screen.obj string.obj stdlib.obj qsort.obj time.obj assert.obj \
-           ctos.obj i4.obj setjmp.obj)
+           farmem.obj strerror.obj dir.obj stat.obj exec.obj font.obj \
+           request.obj serial.obj serio.obj ctos.obj kernel.obj i4.obj setjmp.obj)
 EXAMPLES = $(patsubst examples/%.c,$(B)/%.run,$(wildcard examples/*.c))
 
 all: $(EXAMPLES)

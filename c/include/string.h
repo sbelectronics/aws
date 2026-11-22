@@ -20,5 +20,6 @@ char *strrchr(const char *s, int c);
 char *strstr(const char *s, const char *t);
 char *strtok(char *s, const char *delims);
 char *strdup(const char *s);
+char *strerror(int erc);    /* erc is a CTOS error code, as errno holds */
 
 #endif

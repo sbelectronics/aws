@@ -61,11 +61,16 @@ python2 ctostool.py floppy.img add Sys eliza.run eliza.run
 | Header | What's there |
 |---|---|
 | `stdio.h` | `fopen`, `fclose`, `fread`, `fwrite`, `fseek`, `ftell`, `rewind`, `feof`, `ferror`, `clearerr`, `fflush`, `fgetc`, `fputc`, `ungetc`, `fgets`, `fputs`, `remove`, `rename`, `perror`; the `printf` and `scanf` families; `getchar`, `putchar`, `puts` |
-| `string.h` | the usual `mem*` and `str*` functions, `strtok`, `strdup` |
+| `string.h` | the usual `mem*` and `str*` functions, `strtok`, `strdup`, and `strerror`, which knows the text of the common CTOS error codes |
 | `stdlib.h` | `exit`, `abort`, `abs`, `labs`, `div`, `ldiv`, `atoi`, `atol`, `strtol`, `strtoul`, `rand`, `srand`, `malloc`, `calloc`, `realloc`, `free`, `qsort`, `bsearch` |
 | `time.h` | `time`, `clock`, `mktime`, `gmtime`, `localtime`, `asctime`, `ctime` |
-| `screen.h` | full-screen output and single keys (below) |
+| `screen.h` | full-screen output, single keys and raw keys, line-drawing characters, and fonts (below) |
 | `setjmp.h` | `setjmp`, `longjmp` |
+| `dirent.h`, `sys/stat.h` | `opendir`, `readdir`, `rewinddir`, `closedir`, `mkdir`, `rmdir`; `stat` for a file's size and dates |
+| `process.h` | `execv`, to run another program in place of this one, with arguments |
+| `farmem.h` | memory beyond the 64 KB segment (below) |
+| `serial.h` | the RS-232 ports (below) |
+| `ctosmsg.h` | CTOS exchanges and messages, and `DoRequest` for any CTOS request (below) |
 | `assert.h`, `limits.h`, `ctype.h`, `errno.h`, `stdarg.h`, `stddef.h` | as usual. The `ctype.h` macros evaluate their argument more than once, `errno` holds the CTOS error code of the last failure, and `char` is unsigned. |
 | `ctos.h` | the CTOS calls listed below |
 
@@ -127,6 +132,8 @@ the top of frame 0, and it's `SCR_COLS` (80) wide; `scr_rows()` gives its height
 - **Keys:** `scr_getkey()` waits for a key, without echo. `scr_pollkey()` returns -1 at once
   if no key is waiting. `KEY_UP`, `KEY_DOWN`, `KEY_LEFT`, `KEY_RIGHT`, `KEY_RETURN`,
   `KEY_GO` and `KEY_BACKSPACE` are their codes. (The arrows' codes were found on the AWS.)
+- **Raw keys:** `scr_rawkeys(1)` makes those return each key's own code going down, and the
+  code plus `KEY_RELEASED` coming up, so a game can tell which keys are held.
 - **Timing:** `delay(ms)` waits, in steps of 100 ms.
 - **Mixing with printf:** `printf` output continues on the line set by `scr_line(row)`, or at
   the top after `scr_clear`.
@@ -134,19 +141,86 @@ the top of frame 0, and it's `SCR_COLS` (80) wide; `scr_rows()` gives its height
 When the program ends, the Executive scrolls the frame up to put its own prompt below, so
 the top lines go out of sight.
 
+**Line drawing.** `BOX_H`, `BOX_V`, the corners `BOX_TL`, `BOX_TR`, `BOX_BL` and `BOX_BR`, the
+tees and `BOX_X` are the single-line box characters of the CTOS character set, and
+`SHADE_1` to `SHADE_3` its shading. `BLOCK` is a solid block. `examples/charset.c` shows all
+256 characters. Both machines show them. On the AWS, though, they come from an alternate font,
+switched in by an attribute, and a screen line can only change attributes 16 times:
+- each separate run of these characters uses two of them (`BLOCK` uses none);
+- so does each `scr_attr` run.
+
+A box costs little along its top and bottom, but its sides cost two a line each. Past the
+limit, a character shows as its plain 7-bit neighbour.
+
+**Fonts.** On the NGEN the character shapes are in RAM. `scr_loadfont(name)` loads a font
+file: 256 characters of 16 words, each 9 dots wide, in the low 9 bits of words 1-15. The font
+stays after the program ends, so load `[Sys]<Sys>t1Sys.font` back before leaving. The AWS's
+font is in ROM, so this does nothing there.
+
+### Memory beyond 64 KB
+
+`farmalloc(n)` gives a far pointer to a block of up to 65520 bytes outside the program's
+segment, from CTOS's short-lived memory, and `farfree` gives it back. `_fmemcpy`, `_fmemmove`,
+`_fmemset` and `_fmemcmp` work on far memory, and `farcoreleft()` says how much CTOS has left.
+`FP_SEG`, `FP_OFF` and `MK_FP` take far pointers apart and make them.
+
+CTOS returns short-lived memory only in the reverse order of allocation. So `farfree` hands
+a block back once every block allocated after it has been freed too; free in reverse order
+to get memory back at once.
+
+### Directories and running programs
+
+`opendir("[f0]<C>")` and `readdir` list a directory, and `mkdir` and `rmdir` make and remove
+one. `stat` gives a file's size in bytes, its allocated size, and when it was created and last
+changed.
+
+`execv(runfile, argv)` runs another program in place of this one, which gets `argv` as its
+`argc` and `argv`, the same as from a command form. An argument may hold spaces. Open files
+are closed first, and `execv` returns only if CTOS can't start the program.
+
+### Serial ports
+
+`ser_open(SER_A, 9600)` takes port A (or `SER_B`) from CTOS, at 8 data bits, no parity and 1
+stop bit. `ser_putc`, `ser_puts` and `ser_getc` send and receive, and `ser_close` gives the
+port back.
+- **Polling:** the library reads and writes the serial chip directly, with its interrupts
+  off. `ser_getc` returns -1 at once if no byte has come, so call it often enough: at 9600
+  baud a byte comes about every millisecond, and the chip holds three.
+- **The two CTOS versions:**
+  - On the NGEN, CTOS II's `InitCommLine` takes the port and sets the baud rate.
+  - The AWS's CTOS has only `SetCommISR`, so the library sets the baud rate itself, on the
+    second 8253 (port A's at AEh, B's at ADh), and uses the 7201 at A8h-ABh.
+
+### Messages
+
+`ctosmsg.h` has CTOS's exchanges and messages: `AllocExch`, `DeallocExch`, `Send`, `Wait`,
+`Check` and `QueryDefaultRespExch`. A message is any 4 bytes, usually a far pointer, queued at
+an exchange. Programs in different partitions, on a CTOS with them, find each other's exchanges
+through CTOS's partition calls. Between cluster workstations, CTOS's documented route is the
+Queue Manager on the master. Neither is wrapped here, and the simulators can't run a cluster.
+
+`DoRequest(&rq)` sends a request block and waits for the reply. That reaches any CTOS request,
+including those numbered 1000h and up, which have no fixed address to call. `serial.c` uses
+it for `InitCommLine` (1006h).
+
 ### CTOS calls
 
-The CTOS calls in `ctos.h`:
+The CTOS calls in `ctos.h` and `ctosmsg.h`:
 - files: `OpenFile`, `CreateFile`, `CloseFile`, `ChangeFileLength`, `Read`, `Write`,
   `DeleteFile`, `RenameFile`, `GetFileStatus`, `SetFileStatus`;
-- memory and time: `AllocMemorySL`, `GetDateTime`, `Delay`;
-- keyboard: `ReadKbd`, `ReadKbdDirect`, `Beep`;
-- video: `PosFrameCursor`, `PutFrameAttrs`, `PutFrameChars`, `ResetFrame`, `ScrollFrame`;
-- parameters: `GetpASCB`;
-- leaving: `Exit`, `ErrorExit`.
+- directories: `CreateDir`, `DeleteDir`, `ReadDirSector`;
+- memory: `AllocMemorySL`, `DeallocMemorySL`, `AllocMemoryLL`, `QueryMemAvail`;
+- time: `GetDateTime`, `Delay`;
+- keyboard: `ReadKbd`, `ReadKbdDirect`, `SetKbdUnencodedMode`, `Beep`;
+- video: `PosFrameCursor`, `PutFrameAttrs`, `PutFrameChars`, `ResetFrame`, `ScrollFrame`,
+  `LoadFontRam`, `SetScreenVidAttr`;
+- programs: `GetpASCB`, `Chain`, `Exit`, `ErrorExit`;
+- messages: `AllocExch`, `DeallocExch`, `QueryDefaultRespExch`, and the kernel's `Send`,
+  `Wait`, `Check` and `Request`.
 
-Their addresses come from the formulas in `lib/ctos.asm`. To add one, give it a label there
-and a declaration with `#pragma aux (CTOSCALL)` in `ctos.h`.
+Their addresses come from the formulas in `lib/ctos.asm` and `lib/kernel.asm`. To add one,
+give it a label there and a declaration with `#pragma aux (CTOSCALL)`, or build its request
+block for `DoRequest`.
 
 ## Not done yet
 
@@ -163,7 +237,8 @@ make test
 
 runs each example on the AWS and NGEN simulators and checks what it does. It needs:
 - **The simulator**, [aws-simulator](https://github.com/sbelectronics/aws-simulator), built
-  with its disk images. Set `SIMDIR` to its directory.
+  with its disk images, a version whose `awssim` has `-warn186`, `-flsave` and `-serial`.
+  Set `SIMDIR` to its directory.
 - **ctostool**, [ctostool](https://github.com/sbelectronics/ctostool), to make the test
   floppy and read it back afterwards. Set `CTOSTOOL` to its directory, and `PYTHON2` to the
   Python 2 that runs it if that isn't `python2`.
@@ -178,9 +253,12 @@ logs. Here's what it does:
 3. **Checks the results:**
    - the output each program should give;
    - on the AWS, no 80186 instructions (`awssim -warn186`);
-   - for `filetest`, the floppy as the program left it (`-flsave`).
+   - for `filetest`, the floppy as the program left it (`-flsave`);
+   - for `sertest`, what went out of the serial port (`-serial`), with text sent in
+     (`-serialin`).
 
 The tests:
+The programs are in `examples/`, and each is also an example of what it checks.
 - **`selftest`** checks long arithmetic, 22 `printf` formats, `scanf`, `strtol`, the
   string functions, `qsort` and `bsearch`, `setjmp` and `longjmp`, `malloc`, the date
   conversions and `rand`. It prints each failure, then `selftest: 90 checks, 0 failed`.
@@ -195,7 +273,15 @@ The tests:
   bytes written.
 - **`hello`** prints a greeting and a line of formats, then reads a name typed at it.
 - **`screentest`** draws on the screen and shows the code of each key typed at it, including
-  the arrows on the AWS, along with `delay` and the date.
+  the arrows on the AWS, then raw key codes, along with `delay` and the date.
+- **`ctostest`** checks far memory, messages, `strerror`, directories and `stat`. Then it runs
+  `filetest` with `execv`, giving it `[f0]<C>` and `via execv`, which `filetest` prints as
+  `argc 3: [filetest] [[f0]<C>] [via execv]` before passing its own checks.
+- **`charset`** shows the character set and a box drawn with the `BOX_` characters.
+- **`fonttest`** loads a font with a checkered `A`, then the system font again, and prints
+  what each returned: `load 0, restore 0`.
+- **`sertest`** sends `hello serial` from port A, waits for a line to come in, and sends it
+  back after `echo: `. It runs on both machines.
 
 On the AWS, code written in assembly should be checked for 80186 instructions: they decode
 as other instructions on its 8086. `wcc -0` doesn't generate them.

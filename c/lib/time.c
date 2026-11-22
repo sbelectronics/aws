@@ -6,6 +6,7 @@
 #include <ctos.h>
 #include <stdio.h>
 #include <time.h>
+#include "libc.h"
 
 #define DAY       86400L
 #define CTOS_DAYS 6515L
@@ -17,13 +18,18 @@ static int leap(int year)
 
 static const int mdays[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 
+time_t _ctos_time(unsigned long dt)
+{
+    return (long)(dt >> 16) * (DAY / 2) + (long)(dt & 0xFFFF) - CTOS_DAYS * DAY;
+}
+
 time_t time(time_t *t)
 {
     unsigned long dt;
     time_t v = -1;
 
     if (GetDateTime(&dt) == 0)
-        v = (long)(dt >> 16) * (DAY / 2) + (long)(dt & 0xFFFF) - CTOS_DAYS * DAY;
+        v = _ctos_time(dt);
     if (t)
         *t = v;
     return v;

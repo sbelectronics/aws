@@ -527,10 +527,3 @@ char *fgets(char *s, int n, FILE *f)
     s[i] = 0;
     return s;
 }
-
-void perror(const char *s)
-{
-    if (s && *s)
-        fprintf(stderr, "%s: ", s);
-    fprintf(stderr, "error %d\n", errno);
-}

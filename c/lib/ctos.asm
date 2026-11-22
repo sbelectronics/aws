@@ -53,9 +53,18 @@ CFFD8   segment at 0FFD8h
         org     0494h
         public  AllocMemorySL
 AllocMemorySL label far
+        org     0496h
+        public  DeallocMemorySL
+DeallocMemorySL label far
+        org     0498h
+        public  AllocMemoryLL
+AllocMemoryLL label far
 CFFD8   ends
 
 CFFD0   segment at 0FFD0h
+        org     0510h
+        public  QueryMemAvail
+QueryMemAvail label far
         org     0518h
         public  Beep
 Beep    label far
@@ -102,5 +111,47 @@ Exit    label far
         public  Delay
 Delay   label far
 CFFEF   ends
+
+CFFF0   segment at 0FFF0h
+        org     0312h
+        public  CreateDir
+CreateDir label far
+        org     0314h
+        public  DeleteDir
+DeleteDir label far
+        org     031Ch
+        public  LoadFontRam
+LoadFontRam label far
+CFFF0   ends
+
+CFFB8   segment at 0FFB8h
+        org     069Ah
+        public  SetScreenVidAttr
+SetScreenVidAttr label far
+CFFB8   ends
+
+CFFE8   segment at 0FFE8h
+        org     0392h
+        public  ReadDirSector
+ReadDirSector label far
+        org     0398h
+        public  Chain
+Chain   label far
+CFFE8   ends
+
+CFFC8   segment at 0FFC8h
+        org     0592h
+        public  SetKbdUnencodedMode
+SetKbdUnencodedMode label far
+CFFC8   ends
+
+CFFA0   segment at 0FFA0h
+        org     081Ah
+        public  SetCommISR
+SetCommISR label far
+        org     081Ch
+        public  ResetCommISR
+ResetCommISR label far
+CFFA0   ends
 
         end

@@ -76,6 +76,11 @@ int scr_pollkey(void)
     return ReadKbdDirect(1, &ch) == 0 ? (unsigned char)ch : -1;
 }
 
+void scr_rawkeys(int on)
+{
+    SetKbdUnencodedMode(on ? 0xFF : 0);
+}
+
 void delay(unsigned ms)
 {
     Delay(ms / 100 + (ms % 100 >= 50));

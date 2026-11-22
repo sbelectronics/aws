@@ -10,4 +10,7 @@ void con_moveto(unsigned row);
 
 void _closeall(void);
 
+/* a CTOS date and time as seconds since 1970 */
+long _ctos_time(unsigned long dt);
+
 #endif

@@ -8,6 +8,8 @@
  *   line 4   "delay N": seconds a 3000 ms delay took (2 to 4)
  *   line 5   "date ...", the date and time
  *   line 6   "keys:" and the code of each key, in hex
+ *   line 7   "raw:" and four codes read with raw keys on: two keys going
+ *            down and up
  *   line 8   "printf on line 8"
  *   bottom   "bottom line" */
 #include <screen.h>
@@ -45,6 +47,18 @@ int main(void)
         sprintf(buf, "%02X", k);
         scr_puts(6, col, buf);
     }
+
+    /* the RETURN that ended the line above comes up after raw keys go on */
+    scr_rawkeys(1);
+    delay(500);
+    while (scr_pollkey() != -1)
+        ;
+    scr_puts(7, 0, "raw:");
+    for (col = 5; col < 17; col += 3) {
+        sprintf(buf, "%02X", scr_getkey());
+        scr_puts(7, col, buf);
+    }
+    scr_rawkeys(0);
 
     scr_line(8);
     printf("printf on line 8\n");
