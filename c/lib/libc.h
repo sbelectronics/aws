@@ -5,6 +5,8 @@
 void con_putc(int c);
 void con_flush(void);
 int con_getc(void);
+unsigned con_rows(void);
+void con_moveto(unsigned row);
 
 void _closeall(void);
 

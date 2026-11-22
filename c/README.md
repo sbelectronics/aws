@@ -14,17 +14,31 @@ You need Open Watcom 2.0 (by default in `/opt/watcom`), GNU make and Python 3.
 
 ```sh
 make                       # build/libc.lib, and build/X.run for each examples/X.c
+make lib                   # just the library and crt0
 make WATCOM=/path/to/watcom
 ```
 
-To add a program, put it in `examples/` or link it the same way: `build/crt0.obj` first, then
-the program's objects, then `build/libc.lib` (see the `%.bin` rule in the Makefile).
+### Your own programs
+
+A program in another directory includes `ctos.mk` and lists the objects for each run file:
+
+```make
+CTOS_C = /path/to/aws/c
+include $(CTOS_C)/ctos.mk
+
+all: eliza.run
+eliza.run: eliza.obj words.obj
+```
+
+Each `.obj` is compiled from the `.c` of the same name, and each `.run` is linked from the
+objects listed for it. The library is built first if it needs to be. Add compiler options
+with `CFLAGS`.
 
 To put a run file on a CTOS floppy image, use
 [ctostool](https://github.com/sbelectronics/ctostool):
 
 ```sh
-python2 ctostool.py floppy.img add Sys hello.run build/hello.run
+python2 ctostool.py floppy.img add Sys eliza.run eliza.run
 ```
 
 ## How programs are built
@@ -46,11 +60,13 @@ python2 ctostool.py floppy.img add Sys hello.run build/hello.run
 
 | Header | What's there |
 |---|---|
-| `stdio.h` | `fopen`, `fclose`, `fread`, `fwrite`, `fseek`, `ftell`, `rewind`, `feof`, `ferror`, `clearerr`, `fflush`, `fgetc`, `fputc`, `ungetc`, `fgets`, `fputs`, `remove`, `rename`, `perror`; the `printf` family; `getchar`, `putchar`, `puts` |
-| `string.h` | the usual `mem*` and `str*` functions |
-| `stdlib.h` | `exit`, `abort`, `abs`, `atoi`, `strtol`, `strtoul`, `rand`, `srand`, `malloc`, `calloc`, `realloc`, `free` |
-| `errno.h` | `errno`, the CTOS error code of the last failure |
-| `ctype.h` | the classification macros (they evaluate their argument more than once) |
+| `stdio.h` | `fopen`, `fclose`, `fread`, `fwrite`, `fseek`, `ftell`, `rewind`, `feof`, `ferror`, `clearerr`, `fflush`, `fgetc`, `fputc`, `ungetc`, `fgets`, `fputs`, `remove`, `rename`, `perror`; the `printf` and `scanf` families; `getchar`, `putchar`, `puts` |
+| `string.h` | the usual `mem*` and `str*` functions, `strtok`, `strdup` |
+| `stdlib.h` | `exit`, `abort`, `abs`, `labs`, `div`, `ldiv`, `atoi`, `atol`, `strtol`, `strtoul`, `rand`, `srand`, `malloc`, `calloc`, `realloc`, `free`, `qsort`, `bsearch` |
+| `time.h` | `time`, `clock`, `mktime`, `gmtime`, `localtime`, `asctime`, `ctime` |
+| `screen.h` | full-screen output and single keys (below) |
+| `setjmp.h` | `setjmp`, `longjmp` |
+| `assert.h`, `limits.h`, `ctype.h`, `errno.h`, `stdarg.h`, `stddef.h` | as usual. The `ctype.h` macros evaluate their argument more than once, `errno` holds the CTOS error code of the last failure, and `char` is unsigned. |
 | `ctos.h` | the CTOS calls listed below |
 
 - **Console.** `stdout` is the Executive's video frame 0. The first output clears it and
@@ -60,13 +76,19 @@ python2 ctostool.py floppy.img add Sys hello.run build/hello.run
   forms (`b` is accepted and ignored: there's no text translation). Names are CTOS file
   specs; a plain name is in the current path. Details below.
 - **printf** handles `%d %i %u %x %X %o %c %s %p %%`, with `-`, `0`, `+`, space and `#` flags,
-  width, precision, `*`, and `l` for longs. There's no floating point.
+  width, precision, `*`, and `l` for longs. **scanf** handles `%d %i %u %o %x %c %s %[...] %n
+  %%`, with widths, `*`, `h` and `l`. There's no floating point.
 - **malloc** is first fit in a 16 KB heap inside the segment (`HEAP_SIZE` in `lib/stdlib.c`).
   Each open file takes 540 bytes of it.
+- **Time.** `time_t` counts seconds from 1970, from the CTOS date and time. CTOS has no time
+  zones, so `localtime` is `gmtime`. `clock` counts whole seconds. There's no `difftime`,
+  since that returns a `double`: subtract the `time_t` values instead.
 - **Exit.** `exit(0)`, or returning 0 from `main`, calls `Exit`. A non-zero status calls
   `ErrorExit` with it.
 - **Long arithmetic.** Watcom calls helpers for 32-bit multiply and divide; `lib/i4.asm`
   provides them.
+
+Each part of the library is its own object, so a program links only what it uses.
 
 ### Arguments
 
@@ -94,13 +116,31 @@ handles this:
 
 Up to 8 files can be open at once (`FOPEN_MAX`). `exit` closes any still open.
 
+### The screen
+
+`screen.h` is for programs that draw the screen rather than print lines. Rows count from 0 at
+the top of frame 0, and it's `SCR_COLS` (80) wide; `scr_rows()` gives its height.
+- **Drawing:** `scr_clear`, `scr_puts(row, col, s)`, `scr_putc` and `scr_cursor`. Text past
+  the right edge is cut off.
+- **Attributes:** `scr_attr(row, col, n, attr)` with `ATTR_REVERSE`, `ATTR_UNDERLINE`,
+  `ATTR_HALFBRIGHT` and `ATTR_BLINK`, which combine.
+- **Keys:** `scr_getkey()` waits for a key, without echo. `scr_pollkey()` returns -1 at once
+  if no key is waiting. `KEY_UP`, `KEY_DOWN`, `KEY_LEFT`, `KEY_RIGHT`, `KEY_RETURN`,
+  `KEY_GO` and `KEY_BACKSPACE` are their codes. (The arrows' codes were found on the AWS.)
+- **Timing:** `delay(ms)` waits, in steps of 100 ms.
+- **Mixing with printf:** `printf` output continues on the line set by `scr_line(row)`, or at
+  the top after `scr_clear`.
+
+When the program ends, the Executive scrolls the frame up to put its own prompt below, so
+the top lines go out of sight.
+
 ### CTOS calls
 
 The CTOS calls in `ctos.h`:
 - files: `OpenFile`, `CreateFile`, `CloseFile`, `ChangeFileLength`, `Read`, `Write`,
   `DeleteFile`, `RenameFile`, `GetFileStatus`, `SetFileStatus`;
-- memory and time: `AllocMemorySL`, `GetDateTime`;
-- keyboard: `ReadKbd`, `Beep`;
+- memory and time: `AllocMemorySL`, `GetDateTime`, `Delay`;
+- keyboard: `ReadKbd`, `ReadKbdDirect`, `Beep`;
 - video: `PosFrameCursor`, `PutFrameAttrs`, `PutFrameChars`, `ResetFrame`, `ScrollFrame`;
 - parameters: `GetpASCB`;
 - leaving: `Exit`, `ErrorExit`.
@@ -111,43 +151,51 @@ and a declaration with `#pragma aux (CTOSCALL)` in `ctos.h`.
 ## Not done yet
 
 - Floating point.
+- `strftime`.
 - File passwords: files are opened with an empty password.
 - Programs bigger than 64 KB of code and data.
 
 ## Testing
 
-The examples are the tests, run on the machine or in the
-[simulator](https://github.com/sbelectronics/aws-simulator):
+```sh
+make test
+```
 
-- **`selftest.run`** checks:
-  - long multiply and divide, signed and unsigned (the helpers in `i4.asm`);
-  - 22 `printf` formats and `snprintf` truncation;
-  - `strtol`, the string functions, `malloc`, `realloc` and `calloc`, and `rand`.
+runs each example on the AWS and NGEN simulators and checks what it does. It needs:
+- **The simulator**, [aws-simulator](https://github.com/sbelectronics/aws-simulator), built
+  with its disk images. Set `SIMDIR` to its directory.
+- **ctostool**, [ctostool](https://github.com/sbelectronics/ctostool), to make the test
+  floppy and read it back afterwards. Set `CTOSTOOL` to its directory, and `PYTHON2` to the
+  Python 2 that runs it if that isn't `python2`.
 
-  It prints each failure, then `selftest: 58 checks, 0 failed`, and exits with the number of
-  failures.
-- **`filetest.run`** prints its arguments, then checks file I/O:
+`tools/simtest.py` does the work, and runs on any machine with those. `-m aws` or `-m ngen`
+picks one machine, names after the options pick tests, and `-k DIR` keeps the floppies and
+logs. Here's what it does:
+1. **Makes a test floppy:** it unpacks `test/blank.img.gz`, an empty CTOS floppy, and adds the
+   programs to its directory `<C>`.
+2. **Runs everything at once:** each program runs in its own simulator, started by typing the
+   Executive's `Run` command.
+3. **Checks the results:**
+   - the output each program should give;
+   - on the AWS, no 80186 instructions (`awssim -warn186`);
+   - for `filetest`, the floppy as the program left it (`-flsave`).
+
+The tests:
+- **`selftest`** checks long arithmetic, 22 `printf` formats, `scanf`, `strtol`, the
+  string functions, `qsort` and `bsearch`, `setjmp` and `longjmp`, `malloc`, the date
+  conversions and `rand`. It prints each failure, then `selftest: 90 checks, 0 failed`.
+- **`filetest`** gets `[f0]<C>` and `two words` as arguments and prints them (`argc 4: []
+  [[f0]<C>] [two] [words]`). It then checks file I/O:
   - writing and reading back a 200-line text file of about 5 KB;
-  - `fseek`, `ftell` and `ungetc`, appending, and updating with `r+`;
-  - binary `fread` and `fwrite`, emptying with `w`, and the zeros in a gap;
-  - `rename`, `remove`, and `errno` for a missing file.
+  - seeking, `ungetc`, appending and updating with `r+`;
+  - binary reads and writes, emptying with `w`, and the zeros in a gap;
+  - `rename`, `remove` and `errno`.
 
-  Its first argument is the directory for its files, for example `[f0]<Zork>`. It ends with
-  `filetest: 44 checks, 0 failed`. It leaves `keep.txt` behind, 63 bytes, so you can check
-  from outside that the file has exactly the bytes written.
-- **`hello.run`** prints a greeting and a line of formats, then reads a name from the keyboard:
+  It leaves `keep.txt` behind, and the runner checks that the file holds exactly the 63
+  bytes written.
+- **`hello`** prints a greeting and a line of formats, then reads a name typed at it.
+- **`screentest`** draws on the screen and shows the code of each key typed at it, including
+  the arrows on the AWS, along with `delay` and the date.
 
-  ```
-  Hello from C on CTOS!
-  -42 65535 beef 123456789 ok|    7|7    |00007
-  What's your name? Scott
-  Hello, Scott
-  ```
-
-All three pass on the AWS and NGEN simulators. Run with `[Param 1]` set to `[f0]<Zork>` and
-`[Param 2]` to `two words`, `filetest` starts with `argc 4: [] [[f0]<Zork>] [two] [words]`.
-A non-zero `return` from `main` shows as an error with that number on both machines.
-
-On the AWS, check that a program uses no 80186 instructions. On an 8086 they decode as other
-instructions, and the program crashes or misbehaves. `wcc -0` doesn't generate them, but code
-written in assembly should be checked.
+On the AWS, code written in assembly should be checked for 80186 instructions: they decode
+as other instructions on its 8086. `wcc -0` doesn't generate them.

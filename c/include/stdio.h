@@ -50,6 +50,12 @@ int vfprintf(FILE *f, const char *fmt, va_list ap);
 int vsprintf(char *buf, const char *fmt, va_list ap);
 int vsnprintf(char *buf, size_t n, const char *fmt, va_list ap);
 
+int scanf(const char *fmt, ...);
+int fscanf(FILE *f, const char *fmt, ...);
+int sscanf(const char *s, const char *fmt, ...);
+int vfscanf(FILE *f, const char *fmt, va_list ap);
+int vsscanf(const char *s, const char *fmt, va_list ap);
+
 #define putc(c, f) fputc(c, f)
 #define getc(f)    fgetc(f)
 

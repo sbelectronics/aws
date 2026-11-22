@@ -65,11 +65,20 @@ extern ErcType __far GetDateTime(unsigned long __far *pDateTimeRet);
 #pragma aux (CTOSCALL) AllocMemorySL;
 #pragma aux (CTOSCALL) GetDateTime;
 
-/* Keyboard */
+/* Keyboard. ReadKbdDirect mode 1 returns at once, with ercNoCharAvailable if no
+ * key is waiting; mode 0 waits. */
 extern ErcType __far ReadKbd(char __far *pCharRet);
+extern ErcType __far ReadKbdDirect(unsigned mode, char __far *pCharRet);
 extern ErcType __far Beep(void);
 #pragma aux (CTOSCALL) ReadKbd;
+#pragma aux (CTOSCALL) ReadKbdDirect;
 #pragma aux (CTOSCALL) Beep;
+
+#define ercNoCharAvailable 602
+
+/* Waits n tenths of a second */
+extern ErcType __far Delay(unsigned n);
+#pragma aux (CTOSCALL) Delay;
 
 /* Video frames. Frame 0 is the Executive's main frame. */
 extern ErcType __far PosFrameCursor(unsigned frame, unsigned col, unsigned line);
@@ -86,7 +95,11 @@ extern ErcType __far ScrollFrame(unsigned frame, unsigned firstLine, unsigned li
 #pragma aux (CTOSCALL) ResetFrame;
 #pragma aux (CTOSCALL) ScrollFrame;
 
-#define attrReverse  4
+/* Character attributes for PutFrameAttrs */
+#define attrHalfBright 1
+#define attrUnderline  2
+#define attrReverse    4
+#define attrBlink      8
 
 /* Parameters: the ASCB's word at offset 2 points to the Variable-Length Parameter Block */
 extern ErcType __far GetpASCB(void __far * __far *ppAscbRet);

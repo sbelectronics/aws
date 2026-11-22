@@ -62,6 +62,9 @@ Beep    label far
         org     051Ah
         public  ReadKbd
 ReadKbd label far
+        org     051Ch
+        public  ReadKbdDirect
+ReadKbdDirect label far
 CFFD0   ends
 
 CFFDF   segment at 0FFDFh
@@ -95,6 +98,9 @@ ErrorExit label far
         org     0336h
         public  Exit
 Exit    label far
+        org     033Ch
+        public  Delay
+Delay   label far
 CFFEF   ends
 
         end

@@ -80,6 +80,24 @@ void con_flush(void)
     PosFrameCursor(0, col < COLS ? col : COLS - 1, row);
 }
 
+unsigned con_rows(void)
+{
+    if (!ready)
+        init();
+    return rows;
+}
+
+/* Output continues at the start of line r, from an empty line buffer, so it
+ * doesn't redraw an old line over what screen.c has drawn. */
+void con_moveto(unsigned r)
+{
+    if (!ready)
+        init();
+    row = r < rows ? r : rows - 1;
+    col = 0;
+    memset(line, ' ', COLS);
+}
+
 static char ibuf[128];
 static unsigned ilen, ipos;
 

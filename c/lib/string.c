@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <string.h>
 
 void *memcpy(void *d, const void *s, size_t n)
@@ -141,4 +142,35 @@ char *strstr(const char *s, const char *t)
         if (strncmp(s, t, n) == 0)
             return (char *)s;
     return n ? NULL : (char *)s;
+}
+
+char *strtok(char *s, const char *delims)
+{
+    static char *next;
+    char *tok;
+
+    if (s == NULL)
+        s = next;
+    if (s == NULL)
+        return NULL;
+    while (*s && strchr(delims, *s))
+        s++;
+    if (*s == 0) {
+        next = NULL;
+        return NULL;
+    }
+    tok = s;
+    while (*s && !strchr(delims, *s))
+        s++;
+    if (*s)
+        *s++ = 0;
+    next = s;
+    return tok;
+}
+
+char *strdup(const char *s)
+{
+    char *d = malloc(strlen(s) + 1);
+
+    return d ? strcpy(d, s) : NULL;
 }

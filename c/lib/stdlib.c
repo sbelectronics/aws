@@ -22,6 +22,29 @@ int abs(int n)
     return n < 0 ? -n : n;
 }
 
+long labs(long n)
+{
+    return n < 0 ? -n : n;
+}
+
+div_t div(int num, int den)
+{
+    div_t r;
+
+    r.quot = num / den;
+    r.rem = num % den;
+    return r;
+}
+
+ldiv_t ldiv(long num, long den)
+{
+    ldiv_t r;
+
+    r.quot = num / den;
+    r.rem = num % den;
+    return r;
+}
+
 unsigned long strtoul(const char *s, char **end, int base)
 {
     unsigned long v = 0;
@@ -63,6 +86,11 @@ long strtol(const char *s, char **end, int base)
 int atoi(const char *s)
 {
     return (int)strtol(s, NULL, 10);
+}
+
+long atol(const char *s)
+{
+    return strtol(s, NULL, 10);
 }
 
 /* rand: a 32-bit linear congruential generator; the top 15 bits are returned */

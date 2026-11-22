@@ -1,60 +1,52 @@
 # Cross-compile C for the Convergent AWS and NGEN with Open Watcom.
 #
-#   make                  build/libc.lib and build/*.run for each examples/*.c
+#   make                  build/libc.lib and build/X.run for each examples/X.c
+#   make lib              just the library and crt0
+#   make test             run the examples on the simulators (see tools/simtest.py)
 #   make WATCOM=/path     Open Watcom's install directory (default /opt/watcom)
 #
 # The programs are 8086 code in one 64 KB segment, linked as a raw binary and
-# wrapped as a CTOS version 4 run file by tools/mkrun.py.
+# wrapped as a CTOS version 4 run file by tools/mkrun.py. The compile and link
+# rules are in ctos.mk, which other directories can include.
 
-WATCOM ?= /opt/watcom
-export WATCOM
-BIN    ?= $(WATCOM)/binl64
-CC      = $(BIN)/wcc
-AS      = $(BIN)/wasm
-LD      = $(BIN)/wlink
-AR      = $(BIN)/wlib
-PYTHON ?= python3
+CTOS_C   := $(CURDIR)
+CTOS_SELF = 1
+include ctos.mk
 
-# -0 8086 code, -ms small model, -s no stack checks, -zl no default library
-# records, -x ignore Watcom's own headers, -os optimise for size
-CFLAGS  = -q -0 -ms -s -zl -x -os -wx -we -Iinclude
-AFLAGS  = -q -0 -ms
-
-B       = build
-LIBOBJ  = $(B)/start.obj $(B)/console.obj $(B)/file.obj $(B)/printf.obj \
-          $(B)/string.obj $(B)/stdlib.obj $(B)/ctos.obj $(B)/i4.obj
+B        = $(CTOS_C)/build
+LIBOBJ   = $(addprefix $(B)/,start.obj console.obj file.obj printf.obj scanf.obj \
+           screen.obj string.obj stdlib.obj qsort.obj time.obj assert.obj \
+           ctos.obj i4.obj setjmp.obj)
 EXAMPLES = $(patsubst examples/%.c,$(B)/%.run,$(wildcard examples/*.c))
 
 all: $(EXAMPLES)
+
+lib: $(CTOS_LIB) $(CTOS_CRT0)
 
 $(B):
 	mkdir -p $(B)
 
 $(B)/%.obj: lib/%.c lib/libc.h $(wildcard include/*.h) | $(B)
-	$(CC) $(CFLAGS) -fo=$@ $<
+	$(CTOS_CC) $(CTOS_CFLAGS) -fo=$@ $<
 
 $(B)/%.obj: lib/%.asm | $(B)
-	$(AS) $(AFLAGS) -fo=$@ $<
+	$(CTOS_AS) $(CTOS_AFLAGS) -fo=$@ $<
 
 $(B)/%.obj: examples/%.c $(wildcard include/*.h) | $(B)
-	$(CC) $(CFLAGS) -fo=$@ $<
+	$(CTOS_CC) $(CTOS_CFLAGS) -fo=$@ $<
 
-$(B)/libc.lib: $(LIBOBJ)
+$(CTOS_LIB): $(LIBOBJ)
 	rm -f $@
-	$(AR) -q -n $@ $(addprefix +,$^)
+	$(CTOS_AR) -q -n $@ $(addprefix +,$^)
 
-# crt0 must be first: the run file is entered at offset 0
-$(B)/%.bin: $(B)/%.obj $(B)/crt0.obj $(B)/libc.lib
-	$(LD) option quiet format raw bin option offset=0 option nodefaultlibs \
-	    option map=$(B)/$*.map name $@ \
-	    order clname CODE clname DATA clname BSS clname STACK \
-	    file $(B)/crt0.obj file $< library $(B)/libc.lib
+$(B)/%.run: $(B)/%.obj $(CTOS_CRT0) $(CTOS_LIB) tools/mkrun.py
+	$(call ctos-link,$@,$<)
 
-$(B)/%.run: $(B)/%.bin tools/mkrun.py
-	$(PYTHON) tools/mkrun.py $< $@
+test: all
+	$(PYTHON) tools/simtest.py
 
 clean:
 	rm -rf $(B)
 
 .PRECIOUS: $(B)/%.obj $(B)/%.bin
-.PHONY: all clean
+.PHONY: all lib test clean

@@ -18,5 +18,7 @@ int strncmp(const char *a, const char *b, size_t n);
 char *strchr(const char *s, int c);
 char *strrchr(const char *s, int c);
 char *strstr(const char *s, const char *t);
+char *strtok(char *s, const char *delims);
+char *strdup(const char *s);
 
 #endif
