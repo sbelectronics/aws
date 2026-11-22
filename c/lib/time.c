@@ -18,7 +18,7 @@ static int leap(int year)
 
 static const int mdays[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 
-time_t _ctos_time(unsigned long dt)
+time_t ctos_time(unsigned long dt)
 {
     return (long)(dt >> 16) * (DAY / 2) + (long)(dt & 0xFFFF) - CTOS_DAYS * DAY;
 }
@@ -29,7 +29,7 @@ time_t time(time_t *t)
     time_t v = -1;
 
     if (GetDateTime(&dt) == 0)
-        v = _ctos_time(dt);
+        v = ctos_time(dt);
     if (t)
         *t = v;
     return v;

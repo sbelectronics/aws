@@ -21,8 +21,8 @@ int stat(const char *name, struct stat *st)
         (erc = GetFileStatus(fh, statusFileLength, &st->st_alloc, 4)) == 0 &&
         (erc = GetFileStatus(fh, statusCreationDT, &created, 4)) == 0 &&
         (erc = GetFileStatus(fh, statusLastModDT, &changed, 4)) == 0) {
-        st->st_ctime = _ctos_time(created);
-        st->st_mtime = _ctos_time(changed);
+        st->st_ctime = ctos_time(created);
+        st->st_mtime = ctos_time(changed);
     }
     CloseFile(fh);
     if (erc) {

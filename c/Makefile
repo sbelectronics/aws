@@ -1,7 +1,7 @@
 # Cross-compile C for the Convergent AWS and NGEN with Open Watcom.
 #
-#   make                  build/libc.lib, build/X.run for each examples/X.c, and
-#                         hexedit/hexedit.run
+#   make                  build/libc.lib, build/X.run for each examples/X.c,
+#                         hexedit/hexedit.run and the tools in utils/
 #   make lib              just the library and crt0
 #   make test             run the tests on the simulators (see tools/simtest.py)
 #   make WATCOM=/path     Open Watcom's install directory (default /opt/watcom)
@@ -16,12 +16,13 @@ include ctos.mk
 
 B        = $(CTOS_C)/build
 LIBOBJ   = $(addprefix $(B)/,start.obj console.obj file.obj printf.obj scanf.obj \
-           screen.obj string.obj stdlib.obj qsort.obj time.obj assert.obj \
+           screen.obj string.obj stdlib.obj qsort.obj time.obj assert.obj ctype.obj \
            farmem.obj strerror.obj dir.obj stat.obj exec.obj font.obj \
-           request.obj serial.obj serio.obj ctos.obj kernel.obj i4.obj setjmp.obj)
+           request.obj serial.obj serio.obj unistd.obj ctos.obj kernel.obj i4.obj \
+           setjmp.obj)
 EXAMPLES = $(patsubst examples/%.c,$(B)/%.run,$(wildcard examples/*.c))
 
-all: $(EXAMPLES) hexedit/hexedit.run
+all: $(EXAMPLES) hexedit/hexedit.run utils
 
 lib: $(CTOS_LIB) $(CTOS_CRT0)
 
@@ -47,12 +48,16 @@ $(B)/%.run: $(B)/%.obj $(CTOS_CRT0) $(CTOS_LIB) tools/mkrun.py
 hexedit/hexedit.run: hexedit/hexedit.c $(CTOS_LIB) $(CTOS_CRT0) $(wildcard include/*.h)
 	$(MAKE) -C hexedit
 
+utils: $(CTOS_LIB) $(CTOS_CRT0)
+	$(MAKE) -C utils
+
 test: all
 	$(PYTHON) tools/simtest.py
 
 clean:
 	rm -rf $(B)
 	$(MAKE) -C hexedit clean
+	$(MAKE) -C utils clean
 
 .PRECIOUS: $(B)/%.obj $(B)/%.bin
-.PHONY: all lib test clean
+.PHONY: all lib test clean utils

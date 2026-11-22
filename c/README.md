@@ -13,8 +13,8 @@ its run files and C library need CTOS II and an 80186, so nothing it builds runs
 You need Open Watcom 2.0 (by default in `/opt/watcom`), GNU make and Python 3.
 
 ```sh
-make                       # build/libc.lib, build/X.run for each examples/X.c, and
-                           # hexedit/hexedit.run
+make                       # build/libc.lib, build/X.run for each examples/X.c,
+                           # hexedit/hexedit.run and the tools in utils/
 make lib                   # just the library and crt0
 make WATCOM=/path/to/watcom
 ```
@@ -49,9 +49,10 @@ python2 ctostool.py floppy.img add Sys eliza.run eliza.run
   as in a DOS `.COM` file. `lib/crt0.asm` puts every segment in `DGROUP`, starting with the
   code at offset 0, so code and data offsets agree. `wlink` writes a raw binary.
 - **Run file.** `tools/mkrun.py` wraps the binary as a CTOS version 4 run file, entered at
-  offset 0. It pads the image with zeros up to the stack top, since CTOS loads only what's in
-  the file, so the BSS, heap and stack are zeroed without any start-up code. There are no
-  relocations.
+  offset 0. The file holds only the code and initialised data. The header's `cparMinAlloc`
+  asks CTOS for the rest of the segment, up to the stack top, for the BSS, heap and stack,
+  and `crt0` clears it. So `hexedit.run` is 22 KB rather than the 51 KB the whole segment
+  would take. There are no relocations.
 - **CTOS calls.** `include/ctos.h` declares the CTOS requests and OS subroutines as far
   functions with the PL/M calling convention: arguments pushed left to right, the callee pops
   them. `lib/ctos.asm` places each name at its fixed address in an absolute segment, so a call
@@ -64,15 +65,16 @@ python2 ctostool.py floppy.img add Sys eliza.run eliza.run
 | `stdio.h` | `fopen`, `fclose`, `fread`, `fwrite`, `fseek`, `ftell`, `rewind`, `feof`, `ferror`, `clearerr`, `fflush`, `fgetc`, `fputc`, `ungetc`, `fgets`, `fputs`, `remove`, `rename`, `perror`; the `printf` and `scanf` families; `getchar`, `putchar`, `puts` |
 | `string.h` | the usual `mem*` and `str*` functions, `strtok`, `strdup`, and `strerror`, which knows the text of the common CTOS error codes |
 | `stdlib.h` | `exit`, `abort`, `abs`, `labs`, `div`, `ldiv`, `atoi`, `atol`, `strtol`, `strtoul`, `rand`, `srand`, `malloc`, `calloc`, `realloc`, `free`, `qsort`, `bsearch` |
-| `time.h` | `time`, `clock`, `mktime`, `gmtime`, `localtime`, `asctime`, `ctime` |
+| `time.h` | `time`, `clock`, `mktime`, `gmtime`, `localtime`, `asctime`, `ctime`, and `ctos_time` for the dates in CTOS's own structures |
 | `screen.h` | full-screen output, single keys and raw keys, line-drawing characters, and fonts (below) |
 | `setjmp.h` | `setjmp`, `longjmp` |
 | `dirent.h`, `sys/stat.h` | `opendir`, `readdir`, `rewinddir`, `closedir`, `mkdir`, `rmdir`; `stat` for a file's size and dates |
-| `process.h` | `execv`, to run another program in place of this one, with arguments |
+| `unistd.h` | `getcwd`, the current path as `[d0]<Sys>`, and `getopt` for options like `-n` |
+| `process.h` | `execv` and `execf`, to run another program in place of this one, with arguments; `arg_field`, the form field each argument came from |
 | `farmem.h` | memory beyond the 64 KB segment (below) |
 | `serial.h` | the RS-232 ports (below) |
 | `ctosmsg.h` | CTOS exchanges and messages, and `DoRequest` for any CTOS request (below) |
-| `assert.h`, `limits.h`, `ctype.h`, `errno.h`, `stdarg.h`, `stddef.h` | as usual. The `ctype.h` macros evaluate their argument more than once, `errno` holds the CTOS error code of the last failure, and `char` is unsigned. |
+| `assert.h`, `limits.h`, `ctype.h`, `errno.h`, `stdarg.h`, `stddef.h` | as usual. The `ctype.h` classes are functions, not macros, so `tolower(*p++)` is safe. `errno` holds the CTOS error code of the last failure, and `char` is unsigned. |
 | `ctos.h` | the CTOS calls listed below |
 
 - **Console.** `stdout` is the Executive's video frame 0. The first output clears it and
@@ -90,7 +92,9 @@ python2 ctostool.py floppy.img add Sys eliza.run eliza.run
   zones, so `localtime` is `gmtime`. `clock` counts whole seconds. There's no `difftime`,
   since that returns a `double`: subtract the `time_t` values instead.
 - **Exit.** `exit(0)`, or returning 0 from `main`, calls `Exit`. A non-zero status calls
-  `ErrorExit` with it.
+  `ErrorExit` with it, which the Executive shows as an error with that CTOS code's message:
+  1 is "End of file encountered". So a program that has already said what went wrong should
+  still end with 0.
 - **Long arithmetic.** Watcom calls helpers for 32-bit multiply and divide; `lib/i4.asm`
   provides them.
 
@@ -106,6 +110,10 @@ Each part of the library is its own object, so a program links only what it uses
 So a command made with `New Command` and fields such as `'[Input file]' '[Output file]'` gets
 them as `argv[1]` and `argv[2]`. With `Run`, the arguments go in `[Param 1]`, `[Param 2]` and
 so on.
+
+The Executive expands wildcards itself: a word with `*` becomes the names of the files it
+matches, in directory order, or nothing if none do. Single quotes stop that, and keep spaces:
+`'b.*z'` arrives as `b.*z`, and `'x y'` as one argument.
 
 ### Files
 
@@ -176,13 +184,18 @@ to get memory back at once.
 
 ### Directories and running programs
 
-`opendir("[f0]<C>")` and `readdir` list a directory, and `mkdir` and `rmdir` make and remove
-one. `stat` gives a file's size in bytes, its allocated size, and when it was created and last
-changed.
+`opendir("[f0]<C>")` and `readdir` list a directory (`opendir("")` the current one), and
+`mkdir` and `rmdir` make and remove one. `stat` gives a file's size in bytes, its allocated
+size, and when it was created and last changed.
 
 `execv(runfile, argv)` runs another program in place of this one, which gets `argv` as its
 `argc` and `argv`, the same as from a command form. An argument may hold spaces. Open files
 are closed first, and `execv` returns only if CTOS can't start the program.
+
+A command form's fields each give their words as arguments, so `argv` alone doesn't say
+where one field ended. `arg_field(i)` gives the field `argv[i]` came from: 0 for the command
+name, then 1, 2 and on. `execf(runfile, argv, field)` is `execv` with each argument's field
+given, so a field can hold several words, as when typed with spaces between.
 
 ### Serial ports
 
@@ -275,6 +288,75 @@ block, so the editor uses neither: its cursor is drawn with attributes, the same
 machines. It also counts the attribute runs on each line, and leaves out the underlines on
 changed bytes on a line that would have more than the AWS's 16.
 
+## The tools
+
+`utils/` has tools CTOS doesn't have, in the style of the Unix ones:
+
+| Tool | What it does |
+|---|---|
+| `grep [-invclhF] 'pattern' file...` | lines matching a regular expression: `.`, `[a-z]`, `[^0-9]`, `*`, `+`, `?`, `^`, `$`, and `\s`, `\d`, `\w` |
+| `find [-l] 'pattern' [volume...]` | files by name, such as `'*.c'` or `'<Sys>*.run'`, in every directory of a volume; `-l` adds sizes and dates |
+| `diff [-uiwqb] file1 file2` | the fewest changes between two text files, as a classic or (`-u`) unified diff, or where two binary files differ |
+| `sort [-rnfu] [-k field] [-t c] file...` | lines in order: reversed, as numbers, ignoring case, without repeats, on a field |
+| `wc [-lwc] file...` | lines, words and bytes, with totals |
+| `du [volume or [vol]<dir>]` | the space each directory uses and the volume's free space, or each file in a directory, biggest first |
+| `sum file...` | the CRC-32 of each file, the same as zip's and Python's `zlib.crc32`, to check a copy or a transfer |
+| `calc ['expression']` | a 32-bit programmer's calculator, with C's operators and hex, octal, binary and characters; without an expression it asks for one after another |
+| `sysinfo [-v]` | the CTOS version, boot device, processor, date, path, free memory, screen and each disk volume; `-v` adds each volume's home block and CTOS's System Common table |
+
+They share a few habits:
+- **Wildcards.** File names take `*` and `?`, as in `[f0]<C>*.txt`. The Executive expands
+  them before the tool starts, and the tool expands any that reach it in quotes. A pattern
+  with a `*` or a space, for `grep`, `find` or `calc`, needs single quotes, or the Executive
+  takes it as a file name.
+- **Output.** It stops when the screen is full, until RETURN; CANCEL ends the tool. An
+  argument `>name` sends it to a file instead, since the Executive has no redirection. The
+  file is made after the input is read, so `sort list >list` sorts a file into itself.
+- **Endings.** They end normally even when they find nothing or something fails, and say so,
+  since the Executive shows any other ending as a CTOS error with an unrelated message.
+
+**Installing them as commands.** `make` also writes `utils/Install.sub`, a Submit file. Copy
+it, `mkcmd.run` and the tools' run files to a directory, set the Path to that directory, and
+`Submit Install.sub`. It copies each tool to `[Sys]<Tools>`, a directory of its own so that
+nothing of CTOS's is replaced, and makes its command, with a form:
+
+```
+Grep
+  Pattern                     'b.*z'
+  File list                   *.txt
+  [Ignore case?]
+  [Line numbers?]             yes
+  [Lines that do not match?]
+  [Count only?]
+  [File names only?]
+  [Pattern is plain text?]
+  [Output file]
+```
+
+The commands are the tools' names, except `Sort Lines`: CTOS II has a `Sort` already. A
+command that's already there is left alone, so the Submit file can be run again to update
+the run files. Started by its own command, a tool turns its form's yes-or-no fields into its
+options; with `Run`, it takes options as before.
+
+Each tool's form is one string in its source, `FORM`: what it does, then each field's name,
+and for the ones that aren't arguments, the option it gives (`[Ignore case?] -i`) or `>` for
+the output file. `tools/mksub.py` writes the Submit file from those strings, and the tool
+reads its fields with them. `New Command`'s own form takes only what fits on the screen line,
+too few for nine field names, so the Submit file runs `mkcmd`, which gives them to New
+Command's program directly: `Command.run` on the AWS, `CmdFileEditor.run` on the NGEN.
+
+`find` and `du` read the volume's `<Sys>FileHeaders.Sys` straight through, which holds every
+file's name, directory, size and dates, rather than opening each directory and file. They
+stop once they have seen as many headers as the volume says are in use, so a whole hard disk
+takes seconds. `du` also reads `<Sys>Mfd.Sys` for the directories with nothing in them. CTOS
+compares names ignoring case, and so do they: its own files give their directory as `<sys>`.
+
+`sysinfo` gets each volume's home block with `GetVHB`, the current path with `GetUCB`, and the
+version and boot device from System Common, a table of pointers to CTOS's structures at
+`0000:0240`. The names of its entries come from CTOS's `SysCom.Edf`. The version string and
+boot device name are the same on CTOS 9 and CTOS II; what the other entries point to differs
+between versions, so it only shows them.
+
 ## Not done yet
 
 - Floating point.
@@ -288,8 +370,8 @@ changed bytes on a line that would have more than the AWS's 16.
 make test
 ```
 
-runs each example, and `hexedit`, on the AWS and NGEN simulators and checks what it does. It
-needs:
+runs each example, `hexedit` and the tools on the AWS and NGEN simulators and checks what
+they do. It needs:
 - **The simulator**, [aws-simulator](https://github.com/sbelectronics/aws-simulator), built
   with its disk images, a version whose `awssim` has `-warn186`, `-flsave` and `-serial`,
   and whose typing takes `\xHH` for any key.
@@ -309,7 +391,7 @@ screenshot in the `-k` directory. Here's what it does:
 3. **Checks the results:**
    - the output each program should give;
    - on the AWS, no 80186 instructions (`awssim -warn186`);
-   - for `filetest` and `hexedit`, the files as the program left them (`-flsave`);
+   - for `filetest`, `hexedit` and `sort`, the files as the program left them (`-flsave`);
    - for `sertest`, what went out of the serial port (`-serial`), with text sent in
      (`-serialin`).
 
@@ -337,6 +419,8 @@ The programs are in `examples/`, and each is also an example of what it checks, 
 - **`charset`** shows the character set and a box drawn with the `BOX_` characters.
 - **`fonttest`** loads a font with a checkered `A`, then the system font again, and prints
   what each returned: `load 0, restore 0`.
+- **`memtest`** checks that CTOS gives a program the memory above its run file, for the BSS
+  and stack: it takes every block of memory CTOS will give, and none may overlap them.
 - **`hexedit`** edits a 45-byte file with keys typed at it: overtyping in hex and text,
   inserting, deleting, undo and redo, finding text, copying a block and pasting it, help,
   and saving twice, once as a new file and once in place. The runner checks the file.
@@ -345,6 +429,16 @@ The programs are in `examples/`, and each is also an example of what it checks, 
   file.
 - **`sertest`** sends `hello serial` from port A, waits for a line to come in, and sends it
   back after `echo: `. It runs on both machines.
+- **`install`** runs `Install.sub` on a floppy with the tools, then uses the `Grep`, `Sort
+  Lines` and `Sysinfo` commands it made, filling in their forms, with an output file.
+- **The tools** each have a test with files on the floppy: `grep` with a quoted pattern and
+  a wildcard, `find -l` and `du` on the floppy and on the hard disk (`finddisk`, `dudisk`),
+  `diff`, `sort -n` into a file with `>`, `wc` with totals, `sum` against Python's CRC-32,
+  `calc` given an expression and typed at (`calci`), and `sysinfo -v`, with a key for its
+  second page.
+
+`find`, `du` and `sysinfo` need the simulators' disks as they are: they look for the
+volumes' names and some of their files.
 
 On the AWS, code written in assembly should be checked for 80186 instructions: they decode
 as other instructions on its 8086. `wcc -0` doesn't generate them.

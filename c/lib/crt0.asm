@@ -4,9 +4,9 @@
 ; code and data offsets agree and the run file needs no relocations. crt0
 ; must come first in the link: the run file is entered at offset 0.
 ;
-; Word 2 of the image holds the stack top, for tools/mkrun.py. Everything
-; past the initialised data is zeros in the run file, so _BSS needs no
-; clearing.
+; Word 2 of the image holds the stack top, for tools/mkrun.py. The run file
+; holds only the code and initialised data; CTOS gives the program the memory
+; above them, for _BSS and the stack, which crt0 clears.
 
         .8086
 
@@ -21,6 +21,8 @@ CONST2  ends
 _DATA   segment word public 'DATA'
 _DATA   ends
 _BSS    segment word public 'BSS'
+        public  __bssbeg
+__bssbeg label  word                    ; first in _BSS, as crt0 is linked first
 _BSS    ends
 STACK   segment para public 'STACK'
         db      4096 dup(?)
@@ -45,6 +47,12 @@ start:  cli
         sti
         mov     es, ax
         cld
+        mov     di, offset DGROUP:__bssbeg      ; clear _BSS and the stack
+        mov     cx, offset DGROUP:__stktop
+        sub     cx, di
+        shr     cx, 1
+        xor     ax, ax
+        rep     stosw
         call    _cmain_                 ; start.c: builds argv, runs main, exits
 _TEXT   ends
 

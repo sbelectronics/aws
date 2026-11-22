@@ -1,6 +1,6 @@
 /* dirent.h - reading CTOS directories, and making and removing them.
- * A directory is named like "[f0]<C>" or "<C>"; a file name is up to 50
- * characters. */
+ * A directory is named like "[f0]<C>" or "<C>", or "" for the current one;
+ * a file name is up to 50 characters. */
 #ifndef DIRENT_H
 #define DIRENT_H
 

@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #define PAGE 512
 
@@ -40,6 +41,10 @@ DIR *opendir(const char *dir)
     if (strlen(dir) >= sizeof d->spec || (d = malloc(sizeof *d)) == NULL)
         return NULL;
     strcpy(d->spec, dir);
+    if (dir[0] == 0 && getcwd(d->spec, sizeof d->spec) == NULL) {    /* "" is the current one */
+        free(d);
+        return NULL;
+    }
     d->page = 0;
     if (load(d)) {
         free(d);

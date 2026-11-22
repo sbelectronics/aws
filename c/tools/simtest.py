@@ -16,7 +16,7 @@ directory <C>. Every test runs in its own simulator, all at once, and is started
 the Executive's Run command, typed in. On the AWS, any 80186 instruction is a
 failure (awssim -warn186).
 """
-import argparse, gzip, os, re, shutil, subprocess, sys, tempfile
+import argparse, gzip, os, re, shutil, subprocess, sys, tempfile, zlib
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BUILD = os.path.join(HERE, 'build')
@@ -32,13 +32,22 @@ BUILD = os.path.join(HERE, 'build')
 # text), and 'sent' what the program must send from port A. 'keep' is what
 # the file 'keepname' (default keep.txt) must hold afterwards. Each test has
 # its own floppy, with its program, the programs of other tests it runs
-# ('needs'), and 'files'. A program that isn't an example names its run file
-# with 'prog'.
+# ('needs'), and 'files' (each the bytes, or a file's path from here). A
+# program that isn't an example names its run file with 'prog'. Instead of
+# Run, a test can type 'commands': seconds to wait after the last one's GO,
+# the command's name, and what to type in its fields.
 
 # 70000 bytes, more than a segment, with NEEDLE at 10F00h
 BIG = bytearray(i % 251 for i in range(70000))
 BIG[0x10F00:0x10F06] = b'NEEDLE'
 BIG_SAVED = b'Z' + BIG[:0x10F00] + b'A' + BIG[0x10F01:]
+
+# for the tools in utils/. The Executive expands * in parameters itself, and
+# keeps what's in single quotes as one parameter, as it stands.
+TEXT_A = b'alpha\nbar baz\ngamma\nfoo bar zed\n'
+TEXT_B = b'alpha\nbar baz\nGAMMA\nfoo bar zed\nend\n'
+TEXTS = {'a.txt': TEXT_A, 'b.txt': TEXT_B}
+TOOLS = ['grep', 'find', 'diff', 'sort', 'wc', 'du', 'sum', 'calc', 'sysinfo']
 
 TESTS = {
     'selftest': dict(run=40, out=[r'selftest: \d+ checks, 0 failed']),
@@ -107,6 +116,56 @@ TESTS = {
                    screen=[r'Found at 00010F00', r'^ Saved 70000 bytes',
                            r'^ Offset 00000064 = 100 ', r'^ Saved 70001 bytes'],
                    keepname='big.dat', keep=BIG_SAVED),
+    'memtest': dict(run=60, out=[r'memtest: \d+ blocks, 0 overlap', r'0 bytes of _BSS not zero']),
+    # the tools in utils/
+    'grep': dict(prog='utils/grep.run', params=['-n', "'b.*z'", '[f0]<C>*.txt'], files=TEXTS, run=35,
+                 screen=[r'^\[f0\]<C>a\.txt:2:bar baz$', r'^\[f0\]<C>a\.txt:4:foo bar zed$',
+                         r'^\[f0\]<C>b\.txt:4:foo bar zed$']),
+    'find': dict(prog='utils/find.run', params=['-l', "'*.txt'", '[f0]'], files=TEXTS, run=35,
+                 screen=[r'^ +32  \d{4}-\d\d-\d\d \d\d:\d\d  \[f0\]<C>a\.txt$',
+                         r'^ +36  \S+ \S+  \[f0\]<C>b\.txt$']),
+    'diff': dict(prog='utils/diff.run', params=['[f0]<C>a.txt', '[f0]<C>b.txt'], files=TEXTS,
+                 run=35, screen=[r'^3c3$', r'^< gamma$', r'^---$', r'^> GAMMA$', r'^4a5$', r'^> end$']),
+    'sort': dict(prog='utils/sort.run', params=['-n', '[f0]<C>n.txt', '>[f0]<C>s.txt'],
+                 files={'n.txt': b'10\n-3\n7\n100\n2\n'}, run=35,
+                 keepname='s.txt', keep=b'-3\n2\n7\n10\n100\n'),
+    'wc': dict(prog='utils/wc.run', params=['[f0]<C>*.txt'], files=TEXTS, run=35,
+               screen=[r'^ +4 +7 +32  \[f0\]<C>a\.txt$', r'^ +5 +8 +36  \[f0\]<C>b\.txt$',
+                       r'^ +9 +15 +68  total$']),
+    'du': dict(prog='utils/du.run', params=['[f0]'], files=TEXTS, run=35,
+               screen=[r'^ +\d+ +\d+ +3  <C>$', r'(?i)^ +\d+ +\d+ +\d+  <Sys>$', r'KB free$']),
+    # the same two on the hard disk
+    'finddisk': dict(prog='utils/find.run', params=["'exec.run'", '[d0]'], run=40,
+                     screen=[r'(?i)^\[d0\]<sys>exec\.run$']),
+    'dudisk': dict(prog='utils/du.run', params=['[d0]'], run=40,
+                   screen=[r'(?i)^ +\d+ +\d+ +\d+  <sys>$', r'directories on \[d0\]',
+                           r'^ +\d+ KB free of \d+ KB$']),
+    'sum': dict(prog='utils/sum.run', params=['[f0]<C>a.txt'], files=TEXTS, run=35,
+                screen=[r'^%08X +32  \[f0\]<C>a\.txt$' % zlib.crc32(TEXT_A)]),
+    'calc': dict(prog='utils/calc.run', params=["'6 * 7'"], run=35,
+                 screen=[r"^  42   hex 2A   oct 52   '\*'$", r'^  bin 0010 1010$']),
+    'calci': dict(prog='utils/calc.run', type=[(15, 'x = 0FFh\\n'), (22, 'x >> 4 | 0b1\\n'), (29, '\\n')],
+                  run=40, screen=[r'^  255   hex FF', r'^  15   hex F   oct 17$']),
+    'sysinfo': dict(prog='utils/sysinfo.run', params=['-v'], type=[(25, '\\n'), (30, '\\n')], run=45,
+                    screen=[r'^Booted from  \[d0\]$', r'^Path         \[d0\]<Sys>$|^Path         \[Sys\]<Sys>$',
+                            r'^\[f0\] +CTest ', r'24C pOPcbRun +[0-9A-F]{4}:[0-9A-F]{4}'],
+                    screen_aws=[r'^CTOS         a240ClstrLfsSp-9\.11$', r'^Processor    8086 or 8088$',
+                                r'^\[d0\] +ScottAWS '],
+                    screen_ngen=[r'^CTOS         t1ClstrLfs-II-3\.2\.0$', r'^Processor    80186 or 80188$',
+                                 r'^\[d0\] +Win ']),
+    # Install.sub makes the tools commands; then the commands' forms work
+    'install': dict(prog='utils/grep.run', run=40,
+                    files=dict([('%s.run' % t, 'utils/%s.run' % t) for t in TOOLS] +
+                               [('Install.sub', 'utils/Install.sub'), ('mkcmd.run', 'utils/mkcmd.run'),
+                                ('n.txt', b'10\n-3\n7\n')] +
+                               list(TEXTS.items())),
+                    commands=[(0, 'path', ['[f0]', 'C']),
+                              (5, 'submit', ['Install.sub']),
+                              (200, 'grep', ["'b.*z'", '*.txt', '', 'yes']),
+                              (25, 'sort lines', ['n.txt', '', 'yes', '', '', '', '', 's.txt']),
+                              (25, 'sysinfo', [])],
+                    screen=[r'^a\.txt:2:bar baz$', r'^b\.txt:4:foo bar zed$', r'^Booted from  \[d0\]$'],
+                    keepname='s.txt', keep=b'-3\n7\n10\n'),
     'sertest': dict(serialin=[(10, 'A', 'ping from the far end\\n')], run=30,
                     out=[r'got: ping from the far end', r'sertest done'],
                     sent='hello serial\r\necho: ping from the far end\r\n'),
@@ -141,17 +200,22 @@ def ctostool(args, **kw):
 
 
 def typing(machine, test, spec):
-    """The -type script: sign on, Run with the run file and the parameters,
-    then the test's input. Returns it, the time of GO, and when to stop."""
+    """The -type script: sign on, Run with the run file and the parameters
+    (or the test's commands), then the test's input. Returns it, the time of
+    the last GO, and when to stop."""
     _, _, signon, t = MACHINES[machine]
-    parts = [signon, '%d:run\\n' % t]
-    fields = ['[f0]<C>%s.run' % test, '', ''] + spec.get('params', [])
-    t += 2
-    for i, text in enumerate(fields):
-        end = '\\g' if i == len(fields) - 1 else '\\n'
-        parts.append('%d:%s%s' % (t, text, end))
-        t += 2 + len(text) * 0.3     # typing takes about 0.2 s a character
-        t = int(t + 0.99)
+    parts = [signon]
+    commands = spec.get('commands') or [
+        (0, 'run', ['[f0]<C>%s.run' % test, '', ''] + spec.get('params', []))]
+    for wait, name, fields in commands:
+        t += wait
+        parts.append('%d:%s%s' % (t, name, '\\n' if fields else '\\g'))
+        t += 2
+        for i, text in enumerate(fields):
+            end = '\\g' if i == len(fields) - 1 else '\\n'
+            parts.append('%d:%s%s' % (t, text, end))
+            t += 2 + len(text) * 0.3     # typing takes about 0.2 s a character
+            t = int(t + 0.99)
     go = t
     for dt, text in spec.get('type', []) + spec.get('type_' + machine, []):
         parts.append('%d:%s' % (go + dt, text))
@@ -226,9 +290,12 @@ def main():
         for p in [t] + TESTS[t].get('needs', []):
             ctostool([img, 'add', 'C', p + '.run', run_file(p)])
         for name, data in TESTS[t].get('files', {}).items():
-            path = os.path.join(work, name)
-            with open(path, 'wb') as f:
-                f.write(data)
+            if isinstance(data, str):
+                path = os.path.join(HERE, data)
+            else:
+                path = os.path.join(work, name)
+                with open(path, 'wb') as f:
+                    f.write(data)
             ctostool([img, 'add', 'C', name, path])
 
     runs = []

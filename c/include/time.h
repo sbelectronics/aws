@@ -25,4 +25,7 @@ struct tm *localtime(const time_t *t);
 char *asctime(const struct tm *tm);
 char *ctime(const time_t *t);
 
+/* A CTOS date and time, as in a file header or GetDateTime, as a time_t */
+time_t ctos_time(unsigned long dt);
+
 #endif

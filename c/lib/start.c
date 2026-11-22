@@ -12,6 +12,7 @@
  * field gives none.
  */
 #include <ctos.h>
+#include <process.h>
 #include <stdlib.h>
 #include "libc.h"
 
@@ -23,9 +24,10 @@ int main(int argc, char **argv);
 #pragma aux __argv "*";
 int __argc;
 char **__argv;
+static unsigned char *fields;   /* the field each argument came from */
 
 /* Walks the VLPB. With argv NULL it only counts the arguments and the bytes
- * their strings need; otherwise it fills in argv and the strings. */
+ * their strings need; otherwise it fills in argv, the strings and fields. */
 static unsigned collect(const unsigned char __far *vlpb, char **argv, char *str,
                         unsigned *bytes)
 {
@@ -41,6 +43,7 @@ static unsigned collect(const unsigned char __far *vlpb, char **argv, char *str,
             if (n > (unsigned)(end - s))
                 break;
             if (argv) {
+                fields[argc] = (unsigned char)i;
                 argv[argc] = str;
                 for (j = 0; j < n; j++)
                     *str++ = s[j];
@@ -56,6 +59,11 @@ static unsigned collect(const unsigned char __far *vlpb, char **argv, char *str,
     return argc;
 }
 
+int arg_field(int i)
+{
+    return fields && i >= 0 && i < __argc ? fields[i] : 0;
+}
+
 void _cmain(void)
 {
     static char *noargs[] = { "", NULL };
@@ -69,11 +77,13 @@ void _cmain(void)
     if (vlpb != NULL && (n = collect(vlpb, NULL, NULL, &bytes)) != 0) {
         argv = malloc((n + 1) * sizeof *argv);
         str = malloc(bytes);
-        if (argv && str) {
+        fields = malloc(n);
+        if (argv && str && fields) {
             argc = collect(vlpb, argv, str, &bytes);
             argv[argc] = NULL;
         } else {
             argv = noargs;
+            fields = NULL;
         }
     }
     __argc = argc;

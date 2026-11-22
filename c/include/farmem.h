@@ -8,7 +8,9 @@
 #ifndef FARMEM_H
 #define FARMEM_H
 
-#define MK_FP(seg, off) ((void __far *)(((unsigned long)(seg) << 16) | (unsigned)(off)))
+/* Watcom's :> joins a segment and an offset. Casting a long to a far pointer
+ * can lose the segment: Watcom made MK_FP(0, n), with n a variable, DS:n. */
+#define MK_FP(seg, off) ((void __far *)((unsigned short)(seg) :> (void __near *)(off)))
 #define FP_SEG(p)       ((unsigned)((unsigned long)(void __far *)(p) >> 16))
 #define FP_OFF(p)       ((unsigned)(unsigned long)(void __far *)(p))
 

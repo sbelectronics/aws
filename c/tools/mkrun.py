@@ -5,8 +5,9 @@ usage: mkrun.py in.bin out.run [name]
 
 in.bin is the linker's raw binary: code and data in one segment (CS = DS =
 SS), entered at offset 0. lib/crt0.asm puts the stack top in word 2. The
-image is padded with zeros up to the stack top, which gives the program its
-zeroed data and stack: CTOS loads the whole file and nothing more.
+file holds only the image; cparMinAlloc asks CTOS for the memory above it,
+up to the stack top, which the loader gives as the rest of the segment.
+crt0 clears it, since it isn't necessarily zero.
 
 The program needs no relocations: the loader relocates saStack and saStart
 itself, and CTOS calls are far calls to fixed addresses.
@@ -21,19 +22,19 @@ if len(img) < 4 or img[0] != 0xEB:
 sp = struct.unpack_from('<H', img, 2)[0]
 if sp & 1 or sp < len(img):
     sys.exit('mkrun: bad stack top %#x (image is %#x bytes)' % (sp, len(img)))
-img += bytes(sp - len(img))
 
 HDR = 0x200
 hdr = bytearray(HDR)
 total = (HDR + len(img) + 511) // 512 * 512
 img += bytes(total - HDR - len(img))
+extra = max(0, (sp - len(img) + 15) // 16)      # paragraphs above the loaded image
 fields = [
     0x5747,          # 0  signature 'GW'
     4,               # 2  run file version
     total // 512,    # 4  cpnRes: file size in 512-byte pages
     0,               # 6  irleMax: relocation entries
     HDR // 16,       # 8  cparDirectory: header size in paragraphs
-    0, 0,            # 10 cparMinAlloc, 12 cparMaxAlloc
+    extra, extra,    # 10 cparMinAlloc, 12 cparMaxAlloc
     0, sp,           # 14 saStack, 16 raStackInit
     0,               # 18 checksum
     0, 0,            # 20 raStart, 22 saStart
