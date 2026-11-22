@@ -13,7 +13,8 @@ its run files and C library need CTOS II and an 80186, so nothing it builds runs
 You need Open Watcom 2.0 (by default in `/opt/watcom`), GNU make and Python 3.
 
 ```sh
-make                       # build/libc.lib, and build/X.run for each examples/X.c
+make                       # build/libc.lib, build/X.run for each examples/X.c, and
+                           # hexedit/hexedit.run
 make lib                   # just the library and crt0
 make WATCOM=/path/to/watcom
 ```
@@ -130,8 +131,13 @@ the top of frame 0, and it's `SCR_COLS` (80) wide; `scr_rows()` gives its height
 - **Attributes:** `scr_attr(row, col, n, attr)` with `ATTR_REVERSE`, `ATTR_UNDERLINE`,
   `ATTR_HALFBRIGHT` and `ATTR_BLINK`, which combine.
 - **Keys:** `scr_getkey()` waits for a key, without echo. `scr_pollkey()` returns -1 at once
-  if no key is waiting. `KEY_UP`, `KEY_DOWN`, `KEY_LEFT`, `KEY_RIGHT`, `KEY_RETURN`,
-  `KEY_GO` and `KEY_BACKSPACE` are their codes. (The arrows' codes were found on the AWS.)
+  if no key is waiting. The `KEY_` names give the codes of the special keys: the arrows,
+  `RETURN`, `GO`, `BACKSPACE`, `TAB`, `DELETE`, `HELP`, `CANCEL`, `FINISH`, `MARK`, `BOUND`,
+  `PREVPAGE`, `NEXTPAGE`, `SCROLLUP`, `SCROLLDOWN` and `F1` to `F10`. They're the same on
+  both machines.
+- **The cursor:** `scr_cursor(row, col)` puts it there, and
+  `scr_cursor(SCR_NOCURSOR, SCR_NOCURSOR)` takes it away. The AWS's cursor is a reverse
+  block, so on a character shown in reverse it cancels out; the NGEN's is an underline.
 - **Raw keys:** `scr_rawkeys(1)` makes those return each key's own code going down, and the
   code plus `KEY_RELEASED` coming up, so a game can tell which keys are held.
 - **Timing:** `delay(ms)` waits, in steps of 100 ms.
@@ -222,6 +228,53 @@ Their addresses come from the formulas in `lib/ctos.asm` and `lib/kernel.asm`. T
 give it a label there and a declaration with `#pragma aux (CTOSCALL)`, or build its request
 block for `DoRequest`.
 
+## hexedit
+
+`hexedit/` is a full-screen hex editor, and the biggest program built with the library.
+
+```
+hexedit [file]
+```
+
+Run it with the Executive's `Run` command, giving the file as the first parameter, or make
+it a command with `New Command`. Without a file name it asks for one. A file that doesn't
+exist yet is made when it's saved, and one that can't be opened for changing is shown read
+only.
+
+The screen has the offset, 16 bytes in hex and the same bytes as text on each line, with the
+cursor shown on both sides. `TAB` moves between them. Bytes changed since the last save are
+underlined. The line below shows the byte at the cursor in hex, decimal, as a character and
+in binary, and the word and long word starting there (low byte first). The keys are on the
+bottom line, and `HELP` shows them all:
+- **Moving:** the arrows, `PREV PAGE` and `NEXT PAGE`, `SCROLL UP` and `SCROLL DOWN`, and
+  `f1` to go to an offset: hex, decimal after `#`, `+n` or `-n` from the cursor, or `$` for
+  the end.
+- **Changing:** hex digits on the hex side, characters on the text side. `f4` switches
+  between overtype and insert. `DELETE` removes the byte at the cursor; `BACKSPACE` moves
+  back, removing the byte before in insert mode. `f5` undoes and `f6` redoes, back as far
+  as the last save.
+- **Blocks:** `f7` or `MARK` starts a block at the cursor, and moving the cursor sets its
+  other end. `f8` copies it, `f9` pastes, over the block if there is one, and `DELETE`
+  removes it. `f7` again or `CANCEL` drops it.
+- **Finding:** `f2` finds hex bytes and quoted text, mixed: `4D 5A`, `"PK" 03 04`. `f3`
+  finds the next one. Both carry on from the start when they reach the end.
+- **Leaving:** `f10` saves, and `FINISH` leaves, asking first if there are unsaved changes.
+
+It works on files bigger than memory. The file stays on disk, read 4 KB at a time, and the
+editor keeps a list of pieces: runs of bytes from the file, or from a buffer holding what was
+typed. An edit replaces some pieces with others, and undo keeps both lists. The limits are on
+changes between saves, not on the file: at most 32 KB of typing and 4000 pieces, less if
+memory is short. `HELP` shows how much is left.
+
+Saving writes only the changed pages when every byte from the file is still where it was.
+Otherwise, after an insert or a delete, it writes the whole file as `name-new` and renames it
+over the old one, so the disk needs room for both for a moment.
+
+The AWS shows reverse and underline together as underline alone, and its cursor is a reverse
+block, so the editor uses neither: its cursor is drawn with attributes, the same on both
+machines. It also counts the attribute runs on each line, and leaves out the underlines on
+changed bytes on a line that would have more than the AWS's 16.
+
 ## Not done yet
 
 - Floating point.
@@ -235,9 +288,11 @@ block for `DoRequest`.
 make test
 ```
 
-runs each example on the AWS and NGEN simulators and checks what it does. It needs:
+runs each example, and `hexedit`, on the AWS and NGEN simulators and checks what it does. It
+needs:
 - **The simulator**, [aws-simulator](https://github.com/sbelectronics/aws-simulator), built
-  with its disk images, a version whose `awssim` has `-warn186`, `-flsave` and `-serial`.
+  with its disk images, a version whose `awssim` has `-warn186`, `-flsave` and `-serial`,
+  and whose typing takes `\xHH` for any key.
   Set `SIMDIR` to its directory.
 - **ctostool**, [ctostool](https://github.com/sbelectronics/ctostool), to make the test
   floppy and read it back afterwards. Set `CTOSTOOL` to its directory, and `PYTHON2` to the
@@ -245,20 +300,22 @@ runs each example on the AWS and NGEN simulators and checks what it does. It nee
 
 `tools/simtest.py` does the work, and runs on any machine with those. `-m aws` or `-m ngen`
 picks one machine, names after the options pick tests, and `-k DIR` keeps the floppies and
-logs. Here's what it does:
-1. **Makes a test floppy:** it unpacks `test/blank.img.gz`, an empty CTOS floppy, and adds the
-   programs to its directory `<C>`.
+logs. `-s SECONDS` stops each run that long after it starts the program, and saves a
+screenshot in the `-k` directory. Here's what it does:
+1. **Makes the test floppies:** for each test it unpacks `test/blank.img.gz`, an empty CTOS
+   floppy, and adds the program, any program it runs, and its data files, in directory `<C>`.
 2. **Runs everything at once:** each program runs in its own simulator, started by typing the
    Executive's `Run` command.
 3. **Checks the results:**
    - the output each program should give;
    - on the AWS, no 80186 instructions (`awssim -warn186`);
-   - for `filetest`, the floppy as the program left it (`-flsave`);
+   - for `filetest` and `hexedit`, the files as the program left them (`-flsave`);
    - for `sertest`, what went out of the serial port (`-serial`), with text sent in
      (`-serialin`).
 
 The tests:
-The programs are in `examples/`, and each is also an example of what it checks.
+The programs are in `examples/`, and each is also an example of what it checks, apart from
+`hexedit`.
 - **`selftest`** checks long arithmetic, 22 `printf` formats, `scanf`, `strtol`, the
   string functions, `qsort` and `bsearch`, `setjmp` and `longjmp`, `malloc`, the date
   conversions and `rand`. It prints each failure, then `selftest: 90 checks, 0 failed`.
@@ -280,6 +337,12 @@ The programs are in `examples/`, and each is also an example of what it checks.
 - **`charset`** shows the character set and a box drawn with the `BOX_` characters.
 - **`fonttest`** loads a font with a checkered `A`, then the system font again, and prints
   what each returned: `load 0, restore 0`.
+- **`hexedit`** edits a 45-byte file with keys typed at it: overtyping in hex and text,
+  inserting, deleting, undo and redo, finding text, copying a block and pasting it, help,
+  and saving twice, once as a new file and once in place. The runner checks the file.
+- **`hexbig`** does the same with a 70,000-byte file: finding bytes past 64 KB, paging, a
+  save in place, going to a decimal offset, an insert at the start and a save of the whole
+  file.
 - **`sertest`** sends `hello serial` from port A, waits for a line to come in, and sends it
   back after `echo: `. It runs on both machines.
 

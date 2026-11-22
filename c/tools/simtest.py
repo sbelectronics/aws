@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""simtest.py - run the example programs on the AWS and NGEN simulators and
-check what they do.
+"""simtest.py - run the example programs and hexedit on the AWS and NGEN
+simulators and check what they do.
 
-usage: simtest.py [-m aws|ngen] [-k DIR] [test ...]
+usage: simtest.py [-m aws|ngen] [-k DIR] [-s SECONDS] [test ...]
 
 It needs:
   - the simulator, https://github.com/sbelectronics/aws-simulator, built, in
@@ -11,8 +11,8 @@ It needs:
     CTOSTOOL names, and the Python 2 that runs it in PYTHON2 (default python2);
   - the programs, built by make.
 
-The programs go on a floppy made from test/blank.img.gz, in its directory
-<C>. Every test runs in its own simulator, all at once, and is started with
+Each test gets a floppy made from test/blank.img.gz, with its program in
+directory <C>. Every test runs in its own simulator, all at once, and is started with
 the Executive's Run command, typed in. On the AWS, any 80186 instruction is a
 failure (awssim -warn186).
 """
@@ -29,7 +29,17 @@ BUILD = os.path.join(HERE, 'build')
 # 'screen_aws' or 'screen_ngen' on one machine). The final screen isn't
 # enough: when a program ends, the Executive scrolls its top lines away.
 # 'serialin' is text arriving at a serial port (seconds after GO, port,
-# text), and 'sent' what the program must send from port A.
+# text), and 'sent' what the program must send from port A. 'keep' is what
+# the file 'keepname' (default keep.txt) must hold afterwards. Each test has
+# its own floppy, with its program, the programs of other tests it runs
+# ('needs'), and 'files'. A program that isn't an example names its run file
+# with 'prog'.
+
+# 70000 bytes, more than a segment, with NEEDLE at 10F00h
+BIG = bytearray(i % 251 for i in range(70000))
+BIG[0x10F00:0x10F06] = b'NEEDLE'
+BIG_SAVED = b'Z' + BIG[:0x10F00] + b'A' + BIG[0x10F01:]
+
 TESTS = {
     'selftest': dict(run=40, out=[r'selftest: \d+ checks, 0 failed']),
     'hello': dict(type=[(20, 'Scott\\n')], run=40,
@@ -50,7 +60,7 @@ TESTS = {
                                r'^printf on line 8$', r'^bottom line$'],
                        screen_aws=[r'^keys: 61 62 01 0B 0E 12$', r'^raw: 01 81 0B 8B$'],
                        screen_ngen=[r'^keys: 61 62$', r'^raw:( [0-9A-F]{2}){4}$']),
-    'ctostest': dict(params=['[f0]'], run=90,
+    'ctostest': dict(params=['[f0]'], needs=['filetest'], run=90,
                      out=[r'ctostest: \d+ checks, 0 failed',
                           re.escape('argc 3: [filetest] [[f0]<C>] [via execv]'),
                           r'filetest: \d+ checks, 0 failed'],
@@ -59,6 +69,44 @@ TESTS = {
     'fonttest': dict(params=['[f0]<C>'], type=[(20, '\\n')], run=45,
                      screen_ngen=[r'^load 0, restore 0$'],
                      screen_aws=[r'^load -?\d+, restore -?\d+$']),
+    # hexedit, keys by their AWS codes: TAB 09, f1-f6 15-1A, f7-f10 1C-1F,
+    # right 0F, DELETE 7F, HELP 00
+    'hexedit': dict(prog='hexedit/hexedit.run', params=['[f0]<C>hex.dat'],
+                    files={'hex.dat': b'The quick brown fox jumps over the lazy dog.\n'},
+                    type=[(20, '4a'),                       # overtype T with 4A
+                          (23, r'\t!!'),                    # text side: overtype "he"
+                          (26, r'\x18XY'),                  # insert XY
+                          (29, r'\x7F'),                    # delete the space
+                          (31, r'\x19\x19\x1A'),            # undo twice, redo
+                          (35, r'\x16"lazy"\n'),            # find
+                          (41, r'\x1C\x0F\x0F\x0F\x1D'),    # mark "lazy", copy
+                          (46, r'\x150\n'),                 # go to 0
+                          (49, r'\x1E\x18'),                # paste, back to overtype
+                          (52, r'\x1F'),                    # save: a new file
+                          (62, r'\x150\n\t4c'),             # hex side: overtype l with 4C
+                          (68, r'\x00'), (71, 'x'),         # help and back
+                          (74, r'\x1F'),                    # save in place
+                          (82, r'\f')],                     # leave
+                    run=92,
+                    screen=[r'HexEdit +\[f0\]<C>hex\.dat', r'Found at 00000025',
+                            r'^ Saved 51 bytes', r'^ *. +Moving +Changing',
+                            r'^ Offset 00000000 = 0 +Byte 4C  76 .L. 01001100  Word 614C  Long 797A614C'],
+                    keepname='hex.dat',
+                    keep=b'LazyJ!!XY quick brown fox jumps over the lazy dog.\n'),
+    'hexbig': dict(prog='hexedit/hexedit.run', params=['[f0]<C>big.dat'],
+                   files={'big.dat': bytes(BIG)},
+                   type=[(20, r'\x16"NEEDLE"\n'),           # find, past 64 KB
+                         (34, '41'),                        # overtype N with 41
+                         (37, r'\x0C\x0C\x05'),             # NEXT PAGE twice, PREV PAGE
+                         (41, r'\x1F'),                     # save in place
+                         (52, r'\x15#100\n'),               # go to decimal 100
+                         (57, r'\x150\n\x18\tZ'),           # go to 0, insert Z
+                         (66, r'\x1F'),                     # save: a new file
+                         (110, r'\f')],                     # leave
+                   run=125,
+                   screen=[r'Found at 00010F00', r'^ Saved 70000 bytes',
+                           r'^ Offset 00000064 = 100 ', r'^ Saved 70001 bytes'],
+                   keepname='big.dat', keep=BIG_SAVED),
     'sertest': dict(serialin=[(10, 'A', 'ping from the far end\\n')], run=30,
                     out=[r'got: ping from the far end', r'sertest done'],
                     sent='hello serial\r\necho: ping from the far end\r\n'),
@@ -71,6 +119,11 @@ MACHINES = {
     'aws': ('awssim', ['-warn186', '-insert', '35'], '30:\\g', 40),
     'ngen': ('ngensim', ['-insert', '55'], '30:\\n;31:\\n;32:Thu Nov 5, 1987 1:00 pm;50:\\g', 62),
 }
+
+
+def run_file(test):
+    prog = TESTS[test].get('prog')
+    return os.path.join(HERE, prog) if prog else os.path.join(BUILD, test + '.run')
 
 
 def sim_exe(simdir, name):
@@ -128,12 +181,13 @@ def check(machine, test, spec, log, floppy):
         if spec['sent'] not in sent:
             problems.append('sent %r on port A' % sent[:80])
     if 'keep' in spec:
+        keepname = spec.get('keepname', 'keep.txt')
         try:
-            got = ctostool([floppy, 'extract', 'C', 'keep.txt'])
+            got = ctostool([floppy, 'extract', 'C', keepname])
             if got != spec['keep']:
-                problems.append('keep.txt holds %r' % got[:80])
+                problems.append('%s holds %r' % (keepname, got[:80]))
         except subprocess.CalledProcessError:
-            problems.append('no keep.txt on the floppy')
+            problems.append('no %s on the floppy' % keepname)
         if b'0 errors' not in ctostool([floppy, 'chkdsk']):
             problems.append('the floppy fails ctostool chkdsk')
     return problems, screen
@@ -144,6 +198,8 @@ def main():
     ap.add_argument('-m', '--machine', choices=sorted(MACHINES), action='append',
                     help='only this machine (default both)')
     ap.add_argument('-k', '--keep', help='keep the floppies and logs in this directory')
+    ap.add_argument('-s', '--shot', type=float, metavar='SECONDS',
+                    help='stop this long after GO and save a screenshot (with -k)')
     ap.add_argument('tests', nargs='*', help='tests to run (default all): %s' % ', '.join(TESTS))
     a = ap.parse_args()
     for var in ('SIMDIR', 'CTOSTOOL'):
@@ -156,17 +212,24 @@ def main():
         if t not in TESTS:
             sys.exit('simtest: no test %s' % t)
     for t in TESTS:
-        if not os.path.exists(os.path.join(BUILD, t + '.run')):
-            sys.exit('simtest: %s.run isn\'t built (run make)' % t)
+        if not os.path.exists(run_file(t)):
+            sys.exit('simtest: %s isn\'t built (run make)' % run_file(t))
 
     work = a.keep or tempfile.mkdtemp(prefix='simtest')
     os.makedirs(work, exist_ok=True)
-    blank = os.path.join(work, 'c.img')
-    with gzip.open(os.path.join(HERE, 'test', 'blank.img.gz')) as f, open(blank, 'wb') as g:
-        g.write(f.read())
-    # every program goes on, since one can run another (ctostest runs filetest)
-    for t in TESTS:
-        ctostool([blank, 'add', 'C', t + '.run', os.path.join(BUILD, t + '.run')])
+    with gzip.open(os.path.join(HERE, 'test', 'blank.img.gz')) as f:
+        blank = f.read()
+    for t in tests:
+        img = os.path.join(work, t + '.img')
+        with open(img, 'wb') as f:
+            f.write(blank)
+        for p in [t] + TESTS[t].get('needs', []):
+            ctostool([img, 'add', 'C', p + '.run', run_file(p)])
+        for name, data in TESTS[t].get('files', {}).items():
+            path = os.path.join(work, name)
+            with open(path, 'wb') as f:
+                f.write(data)
+            ctostool([img, 'add', 'C', name, path])
 
     runs = []
     for m in machines:
@@ -176,10 +239,13 @@ def main():
             spec = TESTS[t]
             floppy = os.path.join(work, '%s-%s.img' % (m, t))
             after = os.path.join(work, '%s-%s-after.img' % (m, t))
-            shutil.copy(blank, floppy)
+            shutil.copy(os.path.join(work, t + '.img'), floppy)
             script, go, stop = typing(m, t, spec)
-            args = [exe, '-floppy', floppy, '-flsave', after, '-seconds', str(stop),
-                    '-type', script] + opts
+            args = [exe, '-floppy', floppy, '-flsave', after, '-type', script] + opts
+            if a.shot is not None:
+                stop = go + a.shot
+                args += ['-png', os.path.join(work, '%s-%s.png' % (m, t))]
+            args += ['-seconds', str(stop)]
             if spec.get('serialin'):
                 args += ['-serial', '-serialin',
                          ';'.join('%d:%s:%s' % (go + dt, port, text) for dt, port, text in spec['serialin'])]

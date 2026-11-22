@@ -13,7 +13,7 @@
 
 static unsigned rows, row, col;
 static char line[COLS];
-static int ready;
+static int ready, pending;     /* pending: the line buffer has output not yet shown */
 
 static void init(void)
 {
@@ -32,6 +32,13 @@ static void init(void)
 static void show(void)
 {
     PutFrameChars(0, 0, row, line, COLS);
+    pending = 0;
+}
+
+static void place(void)
+{
+    show();
+    PosFrameCursor(0, col < COLS ? col : COLS - 1, row);
 }
 
 static void newline(void)
@@ -52,7 +59,7 @@ void con_putc(int c)
     switch (c) {
     case '\n':
         newline();
-        break;
+        return;
     case '\r':
         col = 0;
         break;
@@ -70,14 +77,15 @@ void con_putc(int c)
             newline();
         line[col++] = (char)c;
     }
+    pending = 1;
 }
 
+/* Only with output waiting: otherwise it would blank the line, and move the
+ * cursor, under a program drawing with screen.c. */
 void con_flush(void)
 {
-    if (!ready)
-        return;
-    show();
-    PosFrameCursor(0, col < COLS ? col : COLS - 1, row);
+    if (ready && pending)
+        place();
 }
 
 unsigned con_rows(void)
@@ -96,6 +104,7 @@ void con_moveto(unsigned r)
     row = r < rows ? r : rows - 1;
     col = 0;
     memset(line, ' ', COLS);
+    pending = 0;
 }
 
 static char ibuf[128];
@@ -109,7 +118,7 @@ static void readline(void)
         init();
     ilen = 0;
     for (;;) {
-        con_flush();
+        place();
         if (ReadKbd(&ch) != 0)
             ch = '\n';
         if (ch == 0x0A || ch == 0x0D || ch == 0x1B) {   /* RETURN or GO */
@@ -129,7 +138,7 @@ static void readline(void)
             con_putc(ch);
         }
     }
-    con_flush();
+    place();
     ipos = 0;
 }
 

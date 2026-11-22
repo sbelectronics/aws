@@ -15,15 +15,36 @@
 #define ATTR_REVERSE    4
 #define ATTR_BLINK      8
 
-/* character codes of some keys, as scr_getkey returns them (the arrows as
- * found on the AWS) */
-#define KEY_UP        0x01
-#define KEY_BACKSPACE 0x08
-#define KEY_RETURN    0x0A
-#define KEY_DOWN      0x0B
-#define KEY_LEFT      0x0E
-#define KEY_RIGHT     0x12
-#define KEY_GO        0x1B
+/* character codes of the special keys, as scr_getkey returns them; the same
+ * on the AWS and the NGEN */
+#define KEY_HELP       0x00
+#define KEY_UP         0x01
+#define KEY_MARK       0x02
+#define KEY_FINISH     0x04
+#define KEY_PREVPAGE   0x05
+#define KEY_CANCEL     0x07
+#define KEY_BACKSPACE  0x08
+#define KEY_TAB        0x09
+#define KEY_RETURN     0x0A
+#define KEY_DOWN       0x0B
+#define KEY_NEXTPAGE   0x0C
+#define KEY_BOUND      0x0D
+#define KEY_LEFT       0x0E
+#define KEY_SCROLLUP   0x11
+#define KEY_RIGHT      0x12
+#define KEY_SCROLLDOWN 0x13
+#define KEY_GO         0x1B
+#define KEY_DELETE     0x7F
+#define KEY_F1         0x15     /* f1 to f6 are 15h-1Ah; f7 to f10 skip GO */
+#define KEY_F2         0x16
+#define KEY_F3         0x17
+#define KEY_F4         0x18
+#define KEY_F5         0x19
+#define KEY_F6         0x1A
+#define KEY_F7         0x1C
+#define KEY_F8         0x1D
+#define KEY_F9         0x1E
+#define KEY_F10        0x1F
 
 /* Line-drawing and block characters, from the CTOS standard character set.
  * On the AWS, codes 80h and up are shown with the "special character"
@@ -53,6 +74,10 @@ void scr_clear(void);
 void scr_puts(int row, int col, const char *s);
 void scr_putc(int row, int col, int c);
 void scr_attr(int row, int col, int n, int attr);
+/* The AWS's cursor is a reverse block, so on a reverse character it cancels
+ * out; the NGEN's is an underline. scr_cursor(SCR_NOCURSOR, SCR_NOCURSOR)
+ * takes it away. */
+#define SCR_NOCURSOR 255
 void scr_cursor(int row, int col);
 void scr_line(int row);
 

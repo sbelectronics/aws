@@ -1,8 +1,9 @@
 # Cross-compile C for the Convergent AWS and NGEN with Open Watcom.
 #
-#   make                  build/libc.lib and build/X.run for each examples/X.c
+#   make                  build/libc.lib, build/X.run for each examples/X.c, and
+#                         hexedit/hexedit.run
 #   make lib              just the library and crt0
-#   make test             run the examples on the simulators (see tools/simtest.py)
+#   make test             run the tests on the simulators (see tools/simtest.py)
 #   make WATCOM=/path     Open Watcom's install directory (default /opt/watcom)
 #
 # The programs are 8086 code in one 64 KB segment, linked as a raw binary and
@@ -20,7 +21,7 @@ LIBOBJ   = $(addprefix $(B)/,start.obj console.obj file.obj printf.obj scanf.obj
            request.obj serial.obj serio.obj ctos.obj kernel.obj i4.obj setjmp.obj)
 EXAMPLES = $(patsubst examples/%.c,$(B)/%.run,$(wildcard examples/*.c))
 
-all: $(EXAMPLES)
+all: $(EXAMPLES) hexedit/hexedit.run
 
 lib: $(CTOS_LIB) $(CTOS_CRT0)
 
@@ -43,11 +44,15 @@ $(CTOS_LIB): $(LIBOBJ)
 $(B)/%.run: $(B)/%.obj $(CTOS_CRT0) $(CTOS_LIB) tools/mkrun.py
 	$(call ctos-link,$@,$<)
 
+hexedit/hexedit.run: hexedit/hexedit.c $(CTOS_LIB) $(CTOS_CRT0) $(wildcard include/*.h)
+	$(MAKE) -C hexedit
+
 test: all
 	$(PYTHON) tools/simtest.py
 
 clean:
 	rm -rf $(B)
+	$(MAKE) -C hexedit clean
 
 .PRECIOUS: $(B)/%.obj $(B)/%.bin
 .PHONY: all lib test clean
