@@ -7,7 +7,7 @@
  */
 #include <ctos.h>
 #include <string.h>
-#include "console.h"
+#include "libc.h"
 
 #define COLS 80
 

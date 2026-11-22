@@ -21,8 +21,8 @@ CFLAGS  = -q -0 -ms -s -zl -x -os -wx -we -Iinclude
 AFLAGS  = -q -0 -ms
 
 B       = build
-LIBOBJ  = $(B)/console.obj $(B)/stdio.obj $(B)/string.obj $(B)/stdlib.obj \
-          $(B)/ctos.obj $(B)/i4.obj
+LIBOBJ  = $(B)/start.obj $(B)/console.obj $(B)/file.obj $(B)/printf.obj \
+          $(B)/string.obj $(B)/stdlib.obj $(B)/ctos.obj $(B)/i4.obj
 EXAMPLES = $(patsubst examples/%.c,$(B)/%.run,$(wildcard examples/*.c))
 
 all: $(EXAMPLES)
@@ -30,7 +30,7 @@ all: $(EXAMPLES)
 $(B):
 	mkdir -p $(B)
 
-$(B)/%.obj: lib/%.c lib/console.h $(wildcard include/*.h) | $(B)
+$(B)/%.obj: lib/%.c lib/libc.h $(wildcard include/*.h) | $(B)
 	$(CC) $(CFLAGS) -fo=$@ $<
 
 $(B)/%.obj: lib/%.asm | $(B)

@@ -1,81 +1,12 @@
-/* stdio.c - printf and friends, on the console in console.c */
+/* printf.c - the printf family */
 #include <stdio.h>
 #include <string.h>
-#include "console.h"
-
-struct FILE { int fd; };
-static FILE fin = { 0 }, fout = { 1 }, ferr = { 2 };
-FILE *stdin = &fin, *stdout = &fout, *stderr = &ferr;
-
-int fputc(int c, FILE *f)
-{
-    (void)f;
-    con_putc(c);
-    if (c == '\n')
-        con_flush();
-    return (unsigned char)c;
-}
-
-int putchar(int c)
-{
-    return fputc(c, stdout);
-}
-
-int fputs(const char *s, FILE *f)
-{
-    (void)f;
-    while (*s)
-        con_putc(*s++);
-    con_flush();
-    return 0;
-}
-
-int puts(const char *s)
-{
-    fputs(s, stdout);
-    return fputc('\n', stdout);
-}
-
-int fflush(FILE *f)
-{
-    (void)f;
-    con_flush();
-    return 0;
-}
-
-int fgetc(FILE *f)
-{
-    (void)f;
-    return con_getc();
-}
-
-int getchar(void)
-{
-    return con_getc();
-}
-
-char *fgets(char *s, int n, FILE *f)
-{
-    int i = 0, c;
-
-    while (i < n - 1) {
-        c = fgetc(f);
-        if (c == EOF)
-            break;
-        s[i++] = (char)c;
-        if (c == '\n')
-            break;
-    }
-    if (i == 0)
-        return NULL;
-    s[i] = 0;
-    return s;
-}
 
 /* The formatter sends each character to o->put and counts them all, so
  * snprintf can return the length it would have written. */
 struct out {
     void (*put)(int c, struct out *o);
+    FILE *file;
     char *buf;
     size_t room;
     int count;
@@ -248,10 +179,9 @@ static int format(struct out *o, const char *fmt, va_list ap)
     return o->count;
 }
 
-static void put_console(int c, struct out *o)
+static void put_file(int c, struct out *o)
 {
-    (void)o;
-    con_putc(c);
+    fputc(c, o->file);
 }
 
 static void put_buffer(int c, struct out *o)
@@ -267,11 +197,12 @@ int vfprintf(FILE *f, const char *fmt, va_list ap)
     struct out o;
     int n;
 
-    (void)f;
-    o.put = put_console;
+    o.put = put_file;
+    o.file = f;
     o.count = 0;
     n = format(&o, fmt, ap);
-    con_flush();
+    if (f == stdout || f == stderr)
+        fflush(f);
     return n;
 }
 

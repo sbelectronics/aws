@@ -28,8 +28,7 @@ STACK   segment para public 'STACK'
 __stktop label  word
 STACK   ends
 
-        extrn   main_:near
-        extrn   exit_:near
+        extrn   _cmain_:near
 
 _TEXT   segment
         assume  cs:DGROUP, ds:DGROUP, ss:DGROUP
@@ -46,10 +45,7 @@ start:  cli
         sti
         mov     es, ax
         cld
-        xor     ax, ax                  ; argc = 0, argv = NULL
-        xor     dx, dx
-        call    main_
-        call    exit_                   ; AX = main's result
+        call    _cmain_                 ; start.c: builds argv, runs main, exits
 _TEXT   ends
 
         end     _cstart_

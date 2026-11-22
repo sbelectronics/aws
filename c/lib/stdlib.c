@@ -2,11 +2,11 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
-#include "console.h"
+#include "libc.h"
 
 void exit(int status)
 {
-    con_flush();
+    _closeall();
     if (status)
         ErrorExit(status);
     Exit();

@@ -14,9 +14,21 @@ OpenFile label far
         org     021Ah
         public  CreateFile
 CreateFile label far
+        org     021Ch
+        public  DeleteFile
+DeleteFile label far
+        org     021Eh
+        public  RenameFile
+RenameFile label far
 C0000   ends
 
 CFFF8   segment at 0FFF8h
+        org     0290h
+        public  GetFileStatus
+GetFileStatus label far
+        org     0292h
+        public  SetFileStatus
+SetFileStatus label far
         org     0294h
         public  CloseFile
 CloseFile label far

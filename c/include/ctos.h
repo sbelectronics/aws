@@ -6,7 +6,8 @@
  * places each name at its address, so a call is a plain far call and the
  * program needs no CTOS library.
  *
- * SI, DI and ES are treated as changed by every call, to be safe.
+ * The manuals don't say which registers CTOS keeps, so SI, DI and ES are
+ * treated as changed by every call.
  */
 #ifndef CTOS_H
 #define CTOS_H
@@ -16,7 +17,7 @@ typedef unsigned short ErcType;
 #pragma aux CTOSCALL "*" parm reverse routine [] value [ax] modify [ax bx cx dx si di es];
 
 /* Files. Read and Write move whole 512-byte pages at page-aligned file addresses. */
-extern ErcType __far OpenFile(unsigned short __far *pFhRet, const char __far *pbFileSpec,
+extern ErcType __far OpenFile(unsigned __far *pFhRet, const char __far *pbFileSpec,
                               unsigned cbFileSpec, const char __far *pbPassword,
                               unsigned cbPassword, unsigned mode);
 extern ErcType __far CreateFile(const char __far *pbFileSpec, unsigned cbFileSpec,
@@ -28,15 +29,35 @@ extern ErcType __far Read(unsigned fh, void __far *pBufferRet, unsigned sBufferM
                           unsigned long lfa, unsigned __far *pcbRet);
 extern ErcType __far Write(unsigned fh, const void __far *pBuffer, unsigned sBuffer,
                            unsigned long lfa, unsigned __far *pcbRet);
+extern ErcType __far DeleteFile(unsigned fh);
+extern ErcType __far RenameFile(unsigned fh, const char __far *pbNewFileSpec,
+                                unsigned cbNewFileSpec, const char __far *pbPassword,
+                                unsigned cbPassword);
+extern ErcType __far GetFileStatus(unsigned fh, unsigned statusCode, void __far *pStatusRet,
+                                   unsigned sStatusMax);
+extern ErcType __far SetFileStatus(unsigned fh, unsigned statusCode, const void __far *pStatus,
+                                   unsigned sStatus);
 #pragma aux (CTOSCALL) OpenFile;
 #pragma aux (CTOSCALL) CreateFile;
 #pragma aux (CTOSCALL) CloseFile;
 #pragma aux (CTOSCALL) ChangeFileLength;
 #pragma aux (CTOSCALL) Read;
 #pragma aux (CTOSCALL) Write;
+#pragma aux (CTOSCALL) DeleteFile;
+#pragma aux (CTOSCALL) RenameFile;
+#pragma aux (CTOSCALL) GetFileStatus;
+#pragma aux (CTOSCALL) SetFileStatus;
 
 #define modeRead     0x6D72  /* 'mr' */
 #define modeModify   0x6D6D  /* 'mm' */
+
+/* A file has two lengths: its allocated size, a multiple of 512 set by
+ * ChangeFileLength (and CreateFile), and its end of file, the exact byte count. */
+#define statusFileLength 0   /* allocated size, 4 bytes */
+#define statusEOF        6   /* end of file, 4 bytes */
+
+#define ercEOF          1
+#define ercNoSuchFile   203
 
 /* Memory and time */
 extern ErcType __far AllocMemorySL(unsigned cbSegment, void __far * __far *ppSegmentRet);
