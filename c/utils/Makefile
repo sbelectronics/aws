@@ -2,7 +2,7 @@
 CTOS_C = $(abspath ..)
 include $(CTOS_C)/ctos.mk
 
-TOOLS = grep find diff sort wc du sum calc sysinfo
+TOOLS = grep find diff sort wc du sum calc sysinfo xmodem
 
 all: $(addsuffix .run,$(TOOLS)) mkcmd.run Install.sub
 

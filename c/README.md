@@ -14,7 +14,8 @@ You need Open Watcom 2.0 (by default in `/opt/watcom`), GNU make and Python 3.
 
 ```sh
 make                       # build/libc.lib, build/X.run for each examples/X.c,
-                           # hexedit/hexedit.run and the tools in utils/
+                           # hexedit/hexedit.run, the tools in utils/ and the
+                           # games in games/
 make lib                   # just the library and crt0
 make WATCOM=/path/to/watcom
 ```
@@ -303,6 +304,7 @@ changed bytes on a line that would have more than the AWS's 16.
 | `sum file...` | the CRC-32 of each file, the same as zip's and Python's `zlib.crc32`, to check a copy or a transfer |
 | `calc ['expression']` | a 32-bit programmer's calculator, with C's operators and hex, octal, binary and characters; without an expression it asks for one after another |
 | `sysinfo [-v]` | the CTOS version, boot device, processor, date, path, free memory, screen and each disk volume; `-v` adds each volume's home block and CTOS's System Common table |
+| `xmodem -s\|-r [-k] [-t] [-p B] [-b baud] file` | sends or receives a file over a serial port with XMODEM, to or from a PC's terminal program |
 
 They share a few habits:
 - **Wildcards.** File names take `*` and `?`, as in `[f0]<C>*.txt`. The Executive expands
@@ -357,6 +359,36 @@ version and boot device from System Common, a table of pointers to CTOS's struct
 boot device name are the same on CTOS 9 and CTOS II; what the other entries point to differs
 between versions, so it only shows them.
 
+`xmodem` moves files to and from a PC without a floppy. Start it, then the PC's side: a
+terminal program's XMODEM send or receive, such as Tera Term's, or `sx` and `rx` from lrzsz.
+It uses a CRC-16 when the other end can, a checksum otherwise, takes 128-byte and 1 KB blocks,
+and sends 1 KB blocks with `-k`. A damaged block is sent again. It's 9600 baud on port A
+unless told otherwise, and it polls the serial chip, so nothing is written to the screen
+while a block is coming in. XMODEM pads a file to a whole block with ^Z; `-t` takes them off,
+which is right for text.
+
+## The games
+
+`games/` has two, each a full-screen program:
+- **`chess [-b] [-t seconds] [-d depth] ['position']`** plays you at chess, you as White,
+  or Black with `-b`. Type moves as `e4`, `Nf3`, `exd5`, `O-O` and `e8=Q`, or as squares,
+  `e2e4`. It thinks for up to 10 seconds a move, or `-t`; `-d` searches a fixed number of
+  moves ahead instead. A position in FEN, in single quotes, sets up the board. At its prompt,
+  `new`, `undo`, `switch` (it takes your side), `level` and `depth` change the game, and
+  `perft N` counts the positions N moves ahead. The engine searches with alpha-beta and
+  iterative deepening, follows captures to the end, and keeps a table of positions it has
+  seen in far memory. It knows all the rules, en passant and underpromotion among them,
+  and draws by repetition and the fifty-move rule. Its move generator gives the standard
+  perft counts for the usual test positions. Black's pieces are shown in brackets: in the
+  AWS's font a `p` looks like a `P`.
+- **`patrol [-s seed] [-e]`** is a game of hunting raiders. You command the cutter Kestrel in
+  the Reach, 8 by 8 zones of 8 by 8 sectors, and have to destroy every raider before the
+  deadline. You `move` by compass heading and distance, fire the `lance`, whose energy is
+  split among the raiders in the zone, or a `dart`, which aims itself, and keep up your
+  `shields`, since the raiders close in and fire back. The `chart` shows what's known of the
+  zones around, `nav` gives the heading to a place, and docking next to a depot restocks and
+  mends the Kestrel. `-e` is easier; `-s` plays a given Reach again.
+
 ## Not done yet
 
 - Floating point.
@@ -370,11 +402,11 @@ between versions, so it only shows them.
 make test
 ```
 
-runs each example, `hexedit` and the tools on the AWS and NGEN simulators and checks what
-they do. It needs:
+runs each example, `hexedit`, the tools and the games on the AWS and NGEN simulators and
+checks what they do. It needs:
 - **The simulator**, [aws-simulator](https://github.com/sbelectronics/aws-simulator), built
   with its disk images, a version whose `awssim` has `-warn186`, `-flsave` and `-serial`,
-  and whose typing takes `\xHH` for any key.
+  and whose typing and `-serialin` take `\xHH` for any key or byte.
   Set `SIMDIR` to its directory.
 - **ctostool**, [ctostool](https://github.com/sbelectronics/ctostool), to make the test
   floppy and read it back afterwards. Set `CTOSTOOL` to its directory, and `PYTHON2` to the
@@ -392,8 +424,8 @@ screenshot in the `-k` directory. Here's what it does:
    - the output each program should give;
    - on the AWS, no 80186 instructions (`awssim -warn186`);
    - for `filetest`, `hexedit` and `sort`, the files as the program left them (`-flsave`);
-   - for `sertest`, what went out of the serial port (`-serial`), with text sent in
-     (`-serialin`).
+   - for `sertest` and `xmodem`, what went out of the serial port (`-serial`), with bytes
+     sent in (`-serialin`).
 
 The tests:
 The programs are in `examples/`, and each is also an example of what it checks, apart from
@@ -436,6 +468,15 @@ The programs are in `examples/`, and each is also an example of what it checks, 
   `diff`, `sort -n` into a file with `>`, `wc` with totals, `sum` against Python's CRC-32,
   `calc` given an expression and typed at (`calci`), and `sysinfo -v`, with a key for its
   second page.
+- **`xmrecv`** receives a file with `xmodem -r -t`, from blocks sent in at set times: a
+  128-byte one, a damaged 1 KB one, which it must ask for again, the 1 KB one whole, then the
+  end. **`xmsend`** sends a file of two blocks, and is asked for the first one twice. Both
+  check every byte that went out, and `xmrecv` the file.
+- **`chess`** counts the positions two moves ahead (400), then takes `e4` and refuses
+  `e5e6`. **`chessmate`** sets up a mate in two for the computer, plays `Kb8` for Black, and
+  checks for `Kb6`, `Rh8#` and the checkmate.
+- **`patrol`** plays the Reach of seed 7: into a zone with a raider, shields up, a dart that
+  destroys it, and the chart.
 
 `find`, `du` and `sysinfo` need the simulators' disks as they are: they look for the
 volumes' names and some of their files.

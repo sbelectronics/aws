@@ -1,7 +1,8 @@
 # Cross-compile C for the Convergent AWS and NGEN with Open Watcom.
 #
 #   make                  build/libc.lib, build/X.run for each examples/X.c,
-#                         hexedit/hexedit.run and the tools in utils/
+#                         hexedit/hexedit.run, the tools in utils/ and the
+#                         games in games/
 #   make lib              just the library and crt0
 #   make test             run the tests on the simulators (see tools/simtest.py)
 #   make WATCOM=/path     Open Watcom's install directory (default /opt/watcom)
@@ -22,7 +23,7 @@ LIBOBJ   = $(addprefix $(B)/,start.obj console.obj file.obj printf.obj scanf.obj
            setjmp.obj)
 EXAMPLES = $(patsubst examples/%.c,$(B)/%.run,$(wildcard examples/*.c))
 
-all: $(EXAMPLES) hexedit/hexedit.run utils
+all: $(EXAMPLES) hexedit/hexedit.run utils games
 
 lib: $(CTOS_LIB) $(CTOS_CRT0)
 
@@ -51,6 +52,9 @@ hexedit/hexedit.run: hexedit/hexedit.c $(CTOS_LIB) $(CTOS_CRT0) $(wildcard inclu
 utils: $(CTOS_LIB) $(CTOS_CRT0)
 	$(MAKE) -C utils
 
+games: $(CTOS_LIB) $(CTOS_CRT0)
+	$(MAKE) -C games
+
 test: all
 	$(PYTHON) tools/simtest.py
 
@@ -58,6 +62,7 @@ clean:
 	rm -rf $(B)
 	$(MAKE) -C hexedit clean
 	$(MAKE) -C utils clean
+	$(MAKE) -C games clean
 
 .PRECIOUS: $(B)/%.obj $(B)/%.bin
-.PHONY: all lib test clean utils
+.PHONY: all lib test clean utils games

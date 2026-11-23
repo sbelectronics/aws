@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""simtest.py - run the example programs and hexedit on the AWS and NGEN
-simulators and check what they do.
+"""simtest.py - run the example programs, hexedit, the tools and the games on
+the AWS and NGEN simulators and check what they do.
 
 usage: simtest.py [-m aws|ngen] [-k DIR] [-s SECONDS] [test ...]
 
@@ -16,7 +16,7 @@ directory <C>. Every test runs in its own simulator, all at once, and is started
 the Executive's Run command, typed in. On the AWS, any 80186 instruction is a
 failure (awssim -warn186).
 """
-import argparse, gzip, os, re, shutil, subprocess, sys, tempfile, zlib
+import argparse, binascii, gzip, os, re, shutil, subprocess, sys, tempfile, zlib
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BUILD = os.path.join(HERE, 'build')
@@ -47,7 +47,21 @@ BIG_SAVED = b'Z' + BIG[:0x10F00] + b'A' + BIG[0x10F01:]
 TEXT_A = b'alpha\nbar baz\ngamma\nfoo bar zed\n'
 TEXT_B = b'alpha\nbar baz\nGAMMA\nfoo bar zed\nend\n'
 TEXTS = {'a.txt': TEXT_A, 'b.txt': TEXT_B}
-TOOLS = ['grep', 'find', 'diff', 'sort', 'wc', 'du', 'sum', 'calc', 'sysinfo']
+TOOLS = ['grep', 'find', 'diff', 'sort', 'wc', 'du', 'sum', 'calc', 'sysinfo', 'xmodem']
+
+# XMODEM, as the other end sends it: blocks with a CRC, 128 or 1024 bytes
+def xm_block(n, data, size=128):
+    data = data + b'\x1a' * (size - len(data))
+    crc = binascii.crc_hqx(data, 0)
+    return bytes([1 if size == 128 else 2, n, 255 - n]) + data + bytes([crc >> 8, crc & 255])
+
+def serial_text(data):
+    """bytes for 'serialin', in the simulators' escapes"""
+    return ''.join(chr(c) if 32 <= c < 127 and chr(c) not in ';\\' else '\\x%02X' % c for c in data)
+
+XM_TEXT = b''.join(b'line %03d of the file sent with XMODEM\n' % i for i in range(25))
+XM_BAD = bytearray(xm_block(2, XM_TEXT[128:], 1024))
+XM_BAD[500] ^= 0x40
 
 TESTS = {
     'selftest': dict(run=40, out=[r'selftest: \d+ checks, 0 failed']),
@@ -161,11 +175,38 @@ TESTS = {
                                list(TEXTS.items())),
                     commands=[(0, 'path', ['[f0]', 'C']),
                               (5, 'submit', ['Install.sub']),
-                              (200, 'grep', ["'b.*z'", '*.txt', '', 'yes']),
+                              (220, 'grep', ["'b.*z'", '*.txt', '', 'yes']),
                               (25, 'sort lines', ['n.txt', '', 'yes', '', '', '', '', 's.txt']),
                               (25, 'sysinfo', [])],
                     screen=[r'^a\.txt:2:bar baz$', r'^b\.txt:4:foo bar zed$', r'^Booted from  \[d0\]$'],
                     keepname='s.txt', keep=b'-3\n7\n10\n'),
+    # xmodem: the other end's side is scripted, at fixed times
+    'xmrecv': dict(prog='utils/xmodem.run', params=['-r', '-t', '[f0]<C>keep.txt'], run=55,
+                   serialin=[(10, 'A', serial_text(xm_block(1, XM_TEXT[:128]))),
+                             (14, 'A', serial_text(bytes(XM_BAD))),
+                             (20, 'A', serial_text(xm_block(2, XM_TEXT[128:], 1024))),
+                             (26, 'A', serial_text(b'\x04'))],
+                   sent='\x06\x15\x06\x06', keep=XM_TEXT,
+                   screen=[r'^xmodem: received \[f0\]<C>keep\.txt, %d bytes$' % len(XM_TEXT)]),
+    'xmsend': dict(prog='utils/xmodem.run', params=['-s', '[f0]<C>x.txt'], files={'x.txt': XM_TEXT[:200]},
+                   run=50, serialin=[(14, 'A', 'C'), (18, 'A', '\\x15'), (22, 'A', '\\x06'),
+                                     (26, 'A', '\\x06'), (30, 'A', '\\x06')],
+                   sent=(2 * xm_block(1, XM_TEXT[:128]) + xm_block(2, XM_TEXT[128:200]) +
+                         b'\x04').decode('latin1'),
+                   screen=[r'^xmodem: sent \[f0\]<C>x\.txt, 200 bytes$']),
+    # chess: the move generator, a move typed in and a bad one, then a mate in 2
+    'chess': dict(prog='games/chess.run', params=['-d', '2'],
+                  type=[(15, 'perft 2\\n'), (35, 'e4\\n'), (55, 'e5e6\\n'), (62, r'\f')], run=72,
+                  screen=[r'perft 2: 400 positions', r'  1\. e4 +\S+', r"e5e6 isn't a legal move here"]),
+    'chessmate': dict(prog='games/chess.run', params=['-b', '-d', '3', "'k7/8/2K5/8/8/8/8/7R w'"],
+                      type=[(35, 'Kb8\\n'), (55, r'\f')], run=65,
+                      screen=[r'  1\. Kb6 +Kb8', r'  2\. Rh8#', r'Checkmate: White wins']),
+    # patrol, with the Reach of seed 7: into a raider's zone, a dart, the chart
+    'patrol': dict(prog='games/patrol.run', params=['-s', '7'],
+                   type=[(15, 'm 0 10\\n'), (22, 'm 270 8\\n'), (29, 'shields 1200\\n'), (36, 'd\\n'),
+                         (43, 'chart\\n'), (50, 'q\\n')], run=60,
+                   screen=[r'Zone 7,5: 1 raider here!', r'The raider at 6,3 is destroyed\.',
+                           r'Raiders left 18', r'1d <- > -  +Shields 1200']),
     'sertest': dict(serialin=[(10, 'A', 'ping from the far end\\n')], run=30,
                     out=[r'got: ping from the far end', r'sertest done'],
                     sent='hello serial\r\necho: ping from the far end\r\n'),
