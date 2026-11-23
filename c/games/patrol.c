@@ -5,8 +5,8 @@
  * You command the patrol cutter Kestrel. The Reach is 8 by 8 zones, each 8
  * by 8 sectors, with raiders hiding in some of them, depots that restock
  * you, and stars in the way. Destroy every raider before the deadline. -e
- * gives an easier game, with fewer raiders and more time; -s picks the
- * Reach by number, so a game can be played again.
+ * gives an easier game, with fewer raiders, more time, and raiders that hit
+ * less hard; -s picks the Reach by number, so a game can be played again.
  *
  * Commands, by their first letter or more:
  *   move heading sectors   heading in degrees: 0 is up, 90 right
@@ -15,14 +15,16 @@
  *   dart [heading]         a missile, aimed at the nearest raider unless
  *                          given a heading; stars stop it
  *   shields level          moves energy into the shields or back
- *   chart                  scans the zones around and shows what's known
+ *   chart                  scans the zones around and shows what's known,
+ *                          and where the depots are
  *   nav zx zy [sx sy]      the heading and distance to a zone and sector
  *   help, quit (or FINISH)
  *
  * Raiders close in and fire after each thing you do, though not as you
- * arrive. Shields take the hits; when they're gone, so is the Kestrel. Next to a depot you're docked:
- * restocked, mended, and safe. Hard hits damage systems, which mend with
- * time. Moving takes a tenth of a day for each sector. */
+ * arrive. Shields take the hits; when they're gone, so is the Kestrel. Next
+ * to a depot you're docked: restocked, mended, and safe. Hard hits damage
+ * systems, which mend with time. Moving takes a tenth of a day for each
+ * sector. */
 #include <screen.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -72,6 +74,7 @@ static int arrived;                     /* just came into a zone with raiders */
 static int now, deadline;               /* in tenths of a day */
 static int damaged[NSYS];               /* tenths of a day until mended */
 static int start_raiders;
+static int easy;                        /* -e: fewer raiders, more time, softer hits */
 
 static unsigned long seed;
 static int rnd(int n)                   /* 0 to n - 1 */
@@ -193,19 +196,18 @@ static void draw_chart(void)
         sprintf(label, "%d", y + 1);
         scr_puts(GRID_ROW + y, GRID_COL - 2, label);
         for (x = 0; x < 8; x++) {
-            if (!known[y][x])
-                strcpy(cell, "  ? ");
-            else
-                sprintf(cell, " %c%c ", zraiders[y][x] ? '0' + zraiders[y][x] : '-',
-                        zdepot[y][x] ? 'd' : ' ');
+            /* depots send out beacons, so they're on the chart from the start */
+            sprintf(cell, " %c%c ",
+                    !known[y][x] ? '?' : zraiders[y][x] ? '0' + zraiders[y][x] : '-',
+                    zdepot[y][x] ? 'd' : ' ');
             if (x == zx && y == zy) {
                 cell[0] = '<';
                 cell[3] = '>';
             }
-            scr_puts(GRID_ROW + y, GRID_COL + 4 * x - 1, cell);
+            scr_puts(GRID_ROW + y, GRID_COL + 4 * x, cell);
         }
     }
-    scr_puts(GRID_ROW + 8, GRID_COL, "  1   2   3   4   5   6   7   8 ");
+    scr_puts(GRID_ROW + 8, GRID_COL, " 1   2   3   4   5   6   7   8");
 }
 
 static void draw_status(void)
@@ -254,7 +256,7 @@ static void redraw(int chart)
 
 /* The Reach */
 
-static void new_game(int easy)
+static void new_game(void)
 {
     int x, y, n;
 
@@ -274,8 +276,13 @@ static void new_game(int easy)
         zraiders[3][4] += 2;
         left += 2;
     }
-    for (n = 0; n < 3; n++)
-        zdepot[rnd(8)][rnd(8)] = 1;
+    for (n = 0; n < 3; n++) {
+        do {
+            x = rnd(8);
+            y = rnd(8);
+        } while (zdepot[y][x]);
+        zdepot[y][x] = 1;
+    }
     start_raiders = left;
     zx = rnd(8);
     zy = rnd(8);
@@ -293,10 +300,13 @@ static void place(int what, int *px, int *py)
 {
     int x, y;
 
+    /* a star never next to the ship: at the edge of the Reach, stars
+     * could wall it in */
     do {
         x = rnd(8);
         y = rnd(8);
-    } while (grid[y][x] != EMPTY);
+    } while (grid[y][x] != EMPTY ||
+             (what == STAR && x >= sx - 1 && x <= sx + 1 && y >= sy - 1 && y <= sy + 1));
     grid[y][x] = (unsigned char)what;
     if (px) {
         *px = x;
@@ -400,7 +410,7 @@ static void raiders_turn(void)
             raider[i].y = ny;
         }
         d = dist_to(raider[i].x, raider[i].y);
-        hit = (40 + rnd(60)) * 6 / (2 + d);
+        hit = (40 + rnd(60)) * (easy ? 4 : 6) / (2 + d);
         shields -= hit;
         if (shields < 0) {
             say("A raider's hit of %d gets through. The Kestrel is lost.", hit);
@@ -428,7 +438,8 @@ static void cmd_move(int heading, int n)
         return;
     }
     if (energy < n * 4 + 10) {
-        say("Not enough energy to go that far.");
+        say(shields > 0 ? "Not enough energy to go that far: lower the shields to free some."
+                        : "Not enough energy to go that far.");
         return;
     }
     x = (long)(zx * 8 + sx) * 256 + 128;
@@ -519,7 +530,8 @@ static void cmd_dart(int heading, int aimed)
             return;
         }
         for (i = 0; i < nraiders; i++)
-            if (best < 0 || dist_to(raider[i].x, raider[i].y) < dist_to(raider[best].x, raider[best].y))
+            if (best < 0 ||
+                dist_to(raider[i].x, raider[i].y) < dist_to(raider[best].x, raider[best].y))
                 best = i;
         heading = heading_to(raider[best].x - sx, raider[best].y - sy);
     }
@@ -632,7 +644,7 @@ static int read_line(char *buf, int size)
 int main(int argc, char **argv)
 {
     char line[40], word[16];
-    int c, a[4], n, easy = 0, chart = 0, acted;
+    int c, a[4], n, chart = 0, acted;
 
     seed = (unsigned long)time(NULL);
     while ((c = getopt(argc, argv, "s:e")) != -1) {
@@ -648,7 +660,7 @@ int main(int argc, char **argv)
     msg_lines = rows - 2 - MSG_ROW;
     if (msg_lines > 12)
         msg_lines = 12;
-    new_game(easy);
+    new_game();
     scr_clear();
     scr_puts(0, 1, "Patrol");
     scr_puts(0, 50, "HELP for the commands");
@@ -704,6 +716,7 @@ int main(int argc, char **argv)
         say("You destroyed %d of %d raiders. FINISH or RETURN to leave.",
             start_raiders - left, start_raiders);
         redraw(0);
+        clear_row(rows - 2);
         scr_getkey();
     }
     scr_clear();

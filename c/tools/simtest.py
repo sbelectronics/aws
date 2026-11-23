@@ -201,12 +201,13 @@ TESTS = {
     'chessmate': dict(prog='games/chess.run', params=['-b', '-d', '3', "'k7/8/2K5/8/8/8/8/7R w'"],
                       type=[(35, 'Kb8\\n'), (55, r'\f')], run=65,
                       screen=[r'  1\. Kb6 +Kb8', r'  2\. Rh8#', r'Checkmate: White wins']),
-    # patrol, with the Reach of seed 7: into a raider's zone, a dart, the chart
+    # patrol, with the Reach of seed 7: into a raider's zone, a dart, the chart,
+    # which shows the depots from the start
     'patrol': dict(prog='games/patrol.run', params=['-s', '7'],
                    type=[(15, 'm 0 10\\n'), (22, 'm 270 8\\n'), (29, 'shields 1200\\n'), (36, 'd\\n'),
                          (43, 'chart\\n'), (50, 'q\\n')], run=60,
-                   screen=[r'Zone 7,5: 1 raider here!', r'The raider at 6,3 is destroyed\.',
-                           r'Raiders left 18', r'1d <- > -  +Shields 1200']),
+                   screen=[r'Zone 7,5: 1 raider here!', r'The raider at 7,5 is destroyed\.',
+                           r'Raiders left 18', r'1  <- > -  +Shields 1200', r'\?d  \?   \?   \?d']),
     'sertest': dict(serialin=[(10, 'A', 'ping from the far end\\n')], run=30,
                     out=[r'got: ping from the far end', r'sertest done'],
                     sent='hello serial\r\necho: ping from the far end\r\n'),

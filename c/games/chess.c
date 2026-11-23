@@ -10,9 +10,10 @@
  *
  * Commands at the prompt: new, undo (takes back your last move and the
  * computer's), switch (the computer takes your side), level N (seconds a
- * move), depth N (0 for no limit), perft N (counts the positions N moves
- * ahead, to check the move generator), help, and quit or FINISH. While the
- * computer thinks, CANCEL makes it move at once.
+ * move), depth N (0 for no limit), fen (shows the position, to set up again
+ * later), perft N (counts the positions N moves ahead, to check the move
+ * generator), help, and quit or FINISH. While the computer thinks, CANCEL
+ * makes it move at once, and what you type is kept for the prompt.
  *
  * The engine: a 0x88 board, alpha-beta search with iterative deepening, a
  * quiescence search of captures, a hash table of positions in far memory,
@@ -44,6 +45,8 @@
 #define MAXPLY 24
 #define MOVESTACK 1600
 #define HISTORY 400         /* game moves and search plies */
+/* moves in a game, counting both sides', with room left for a search */
+#define GAME_MAX (HISTORY - MAXPLY - 2)
 
 /* move flags */
 #define F_CAPTURE 1
@@ -136,6 +139,125 @@ static unsigned long full_hash(void)
     return h;
 }
 
+/* Evaluation: material, and tables of where each piece is best, from
+ * White's side, rank 8 first, so as they look on the board. */
+static const int value[7] = { 0, 100, 320, 330, 500, 900, 0 };
+
+static const signed char pst[7][64] = {
+    { 0 },
+    {   0,  0,  0,  0,  0,  0,  0,  0,      /* pawn */
+       50, 50, 50, 50, 50, 50, 50, 50,
+       10, 10, 20, 30, 30, 20, 10, 10,
+        5,  5, 10, 25, 25, 10,  5,  5,
+        0,  0,  0, 20, 20,  0,  0,  0,
+        5, -5,-10,  0,  0,-10, -5,  5,
+        5, 10, 10,-20,-20, 10, 10,  5,
+        0,  0,  0,  0,  0,  0,  0,  0 },
+    { -50,-40,-30,-30,-30,-30,-40,-50,      /* knight */
+      -40,-20,  0,  0,  0,  0,-20,-40,
+      -30,  0, 10, 15, 15, 10,  0,-30,
+      -30,  5, 15, 20, 20, 15,  5,-30,
+      -30,  0, 15, 20, 20, 15,  0,-30,
+      -30,  5, 10, 15, 15, 10,  5,-30,
+      -40,-20,  0,  5,  5,  0,-20,-40,
+      -50,-40,-30,-30,-30,-30,-40,-50 },
+    { -20,-10,-10,-10,-10,-10,-10,-20,      /* bishop */
+      -10,  0,  0,  0,  0,  0,  0,-10,
+      -10,  0,  5, 10, 10,  5,  0,-10,
+      -10,  5,  5, 10, 10,  5,  5,-10,
+      -10,  0, 10, 10, 10, 10,  0,-10,
+      -10, 10, 10, 10, 10, 10, 10,-10,
+      -10,  5,  0,  0,  0,  0,  5,-10,
+      -20,-10,-10,-10,-10,-10,-10,-20 },
+    {   0,  0,  0,  0,  0,  0,  0,  0,      /* rook */
+        5, 10, 10, 10, 10, 10, 10,  5,
+       -5,  0,  0,  0,  0,  0,  0, -5,
+       -5,  0,  0,  0,  0,  0,  0, -5,
+       -5,  0,  0,  0,  0,  0,  0, -5,
+       -5,  0,  0,  0,  0,  0,  0, -5,
+       -5,  0,  0,  0,  0,  0,  0, -5,
+        0,  0,  0,  5,  5,  0,  0,  0 },
+    { -20,-10,-10, -5, -5,-10,-10,-20,      /* queen */
+      -10,  0,  0,  0,  0,  0,  0,-10,
+      -10,  0,  5,  5,  5,  5,  0,-10,
+       -5,  0,  5,  5,  5,  5,  0, -5,
+        0,  0,  5,  5,  5,  5,  0, -5,
+      -10,  5,  5,  5,  5,  5,  0,-10,
+      -10,  0,  5,  0,  0,  0,  0,-10,
+      -20,-10,-10, -5, -5,-10,-10,-20 },
+    { -30,-40,-40,-50,-50,-40,-40,-30,      /* king, with pieces on the board */
+      -30,-40,-40,-50,-50,-40,-40,-30,
+      -30,-40,-40,-50,-50,-40,-40,-30,
+      -30,-40,-40,-50,-50,-40,-40,-30,
+      -20,-30,-30,-40,-40,-30,-30,-20,
+      -10,-20,-20,-20,-20,-20,-20,-10,
+       20, 20,  0,  0,  0,  0, 20, 20,
+       20, 30, 10,  0,  0, 10, 30, 20 },
+};
+
+static const signed char king_end[64] = {   /* king, in the endgame */
+    -50,-40,-30,-20,-20,-30,-40,-50,
+    -30,-20,-10,  0,  0,-10,-20,-30,
+    -30,-10, 20, 30, 30, 20,-10,-30,
+    -30,-10, 30, 40, 40, 30,-10,-30,
+    -30,-10, 30, 40, 40, 30,-10,-30,
+    -30,-10, 20, 30, 30, 20,-10,-30,
+    -30,-30,  0,  0,  0,  0,-30,-30,
+    -50,-30,-30,-30,-30,-30,-30,-50 };
+
+/* the table index for a square, for White, or for Black seen from its side */
+#define PST_W(sq) ((7 - ((sq) >> 4)) * 8 + ((sq) & 7))
+#define PST_B(sq) (((sq) >> 4) * 8 + ((sq) & 7))
+
+/* The evaluation's sums, kept as pieces come and go: much quicker than
+ * adding up the board at every position. */
+static int material[2];             /* material and placement, the kings' aside */
+static int nonpawn[2];              /* knights, bishops, rooks and queens */
+static unsigned char nbishops[2];
+static unsigned char nminors;       /* knights and bishops */
+static unsigned char nmating;       /* pawns, rooks and queens: any can lead to mate */
+
+static void count(int p, int sq, int n)
+{
+    int t = TYPE(p), c = COLOR(p) == BLACK;
+
+    if (t == KING)
+        return;
+    material[c] += n * (value[t] + pst[t][c ? PST_B(sq) : PST_W(sq)]);
+    if (t != PAWN)
+        nonpawn[c] += n * value[t];
+    if (t == BISHOP)
+        nbishops[c] += n;
+    if (t == KNIGHT || t == BISHOP)
+        nminors += n;
+    else
+        nmating += n;
+}
+
+static void put(int p, int sq)
+{
+    board[sq] = (unsigned char)p;
+    count(p, sq, 1);
+}
+
+static int take(int sq)
+{
+    int p = board[sq];
+
+    board[sq] = 0;
+    count(p, sq, -1);
+    return p;
+}
+
+/* Whether a pawn of the side to move stands next to sq, the square a pawn
+ * just passed: then it may take en passant, and the square counts. */
+static int ep_possible(int sq)
+{
+    int at = sq + (side == WHITE ? -16 : 16), p = side | PAWN;
+
+    return (!OFF(at - 1) && board[at - 1] == p) || (!OFF(at + 1) && board[at + 1] == p);
+}
+
 /* Sets up a position from FEN; returns 0, or -1 if it makes no sense. */
 static int set_fen(const char *fen)
 {
@@ -144,6 +266,10 @@ static int set_fen(const char *fen)
     int rank = 7, file = 0, kings = 0;
 
     memset(board, 0, sizeof board);
+    memset(material, 0, sizeof material);
+    memset(nonpawn, 0, sizeof nonpawn);
+    memset(nbishops, 0, sizeof nbishops);
+    nminors = nmating = 0;
     for (; *fen && *fen != ' '; fen++) {
         if (*fen == '/') {
             rank--;
@@ -151,7 +277,7 @@ static int set_fen(const char *fen)
         } else if (*fen >= '1' && *fen <= '8')
             file += *fen - '0';
         else if ((p = strchr(letters, *fen | 0x20)) != NULL && rank >= 0 && file < 8) {
-            board[rank * 16 + file] = (unsigned char)((p - letters + 1) | (*fen < 'a' ? WHITE : BLACK));
+            put((int)(p - letters + 1) | (*fen < 'a' ? WHITE : BLACK), rank * 16 + file);
             if (TYPE(board[rank * 16 + file]) == KING) {
                 kingsq[COLOR(board[rank * 16 + file])] = (unsigned char)(rank * 16 + file);
                 kings++;
@@ -180,7 +306,8 @@ static int set_fen(const char *fen)
     while (*fen == ' ')
         fen++;
     ep = 0x88;
-    if (fen[0] >= 'a' && fen[0] <= 'h' && (fen[1] == '3' || fen[1] == '6'))
+    if (fen[0] >= 'a' && fen[0] <= 'h' && fen[1] == (side == WHITE ? '6' : '3') &&
+        ep_possible((fen[1] - '1') * 16 + fen[0] - 'a'))
         ep = (unsigned char)((fen[1] - '1') * 16 + fen[0] - 'a');
     while (*fen && *fen != ' ')
         fen++;
@@ -195,6 +322,53 @@ static int set_fen(const char *fen)
     nundo = 0;
     hash = full_hash();
     return 0;
+}
+
+static int first_side(void)            /* the side that moved first */
+{
+    return nundo & 1 ? 24 - side : side;
+}
+
+/* The position in FEN, into s (at least 90 bytes). */
+static void get_fen(char *s)
+{
+    static const char letters[] = " pnbrqk";
+    int r, f, p, empty;
+
+    for (r = 7; r >= 0; r--) {
+        for (f = 0, empty = 0; f < 8; f++) {
+            p = board[r * 16 + f];
+            if (!p) {
+                empty++;
+                continue;
+            }
+            if (empty)
+                *s++ = (char)('0' + empty);
+            empty = 0;
+            *s++ = (char)(letters[TYPE(p)] ^ (COLOR(p) == WHITE ? 0x20 : 0));
+        }
+        if (empty)
+            *s++ = (char)('0' + empty);
+        if (r)
+            *s++ = '/';
+    }
+    *s++ = ' ';
+    *s++ = side == WHITE ? 'w' : 'b';
+    *s++ = ' ';
+    if (!rights)
+        *s++ = '-';
+    if (rights & 1) *s++ = 'K';
+    if (rights & 2) *s++ = 'Q';
+    if (rights & 4) *s++ = 'k';
+    if (rights & 8) *s++ = 'q';
+    *s++ = ' ';
+    if (ep == 0x88)
+        *s++ = '-';
+    else {
+        *s++ = (char)('a' + (ep & 7));
+        *s++ = (char)('1' + (ep >> 4));
+    }
+    sprintf(s, " %d %d", fifty, moveno0 + (nundo + (first_side() == BLACK)) / 2);
 }
 
 static int attacked(int sq, int by)
@@ -345,84 +519,73 @@ static void generate(int captures)
 static void make(const Move __far *m)
 {
     Undo *u = &undo[nundo++];
-    int p = board[m->from], d = side == WHITE ? 16 : -16, r;
+    int p = board[m->from], d = side == WHITE ? 16 : -16, r, at;
 
     u->m = *m;
     u->rights = rights;
     u->ep = ep;
     u->fifty = fifty;
     u->hash = hash;
-    u->captured = board[m->to];
     if (ep != 0x88)
         hash ^= zep[ep & 7];
     hash ^= zrights[rights];
-    if (u->captured)
-        hash ^= ZP(u->captured, m->to);
-    if (m->flags & F_EP) {
-        u->captured = board[m->to - d];
-        board[m->to - d] = 0;
-        hash ^= ZP(u->captured, m->to - d);
+    at = m->flags & F_EP ? m->to - d : m->to;
+    u->captured = board[at];
+    if (u->captured) {
+        hash ^= ZP(u->captured, at);
+        take(at);
     }
+    take(m->from);
     hash ^= ZP(p, m->from);
-    board[m->from] = 0;
     if (m->promo)
         p = side | m->promo;
-    board[m->to] = (unsigned char)p;
+    put(p, m->to);
     hash ^= ZP(p, m->to);
     if (TYPE(p) == KING)
         kingsq[side] = m->to;
     if (m->flags & F_CASTLE) {
         r = m->to & 0x70;
         if ((m->to & 7) == 6) {
-            board[r + 5] = board[r + 7];
-            board[r + 7] = 0;
+            put(take(r + 7), r + 5);
             hash ^= ZP(side | ROOK, r + 7) ^ ZP(side | ROOK, r + 5);
         } else {
-            board[r + 3] = board[r];
-            board[r] = 0;
+            put(take(r), r + 3);
             hash ^= ZP(side | ROOK, r) ^ ZP(side | ROOK, r + 3);
         }
     }
     rights &= castle_mask[m->from] & castle_mask[m->to];
     hash ^= zrights[rights];
     ep = 0x88;
-    if (m->flags & F_DOUBLE) {
+    fifty = (unsigned char)(m->promo || TYPE(p) == PAWN || u->captured ? 0 : fifty + 1);
+    side = 24 - side;
+    hash ^= zside;
+    if ((m->flags & F_DOUBLE) && ep_possible(m->from + d)) {
         ep = (unsigned char)(m->from + d);
         hash ^= zep[ep & 7];
     }
-    fifty = (unsigned char)(TYPE(p) == PAWN || u->captured ? 0 : fifty + 1);
-    side = 24 - side;
-    hash ^= zside;
 }
 
 static void unmake(void)
 {
     Undo *u = &undo[--nundo];
     const Move *m = &u->m;
-    int p, r, d;
+    int p, r;
 
     side = 24 - side;
-    d = side == WHITE ? 16 : -16;
-    p = board[m->to];
+    p = take(m->to);
     if (m->promo)
         p = side | PAWN;
-    board[m->from] = (unsigned char)p;
-    board[m->to] = 0;
-    if (m->flags & F_EP)
-        board[m->to - d] = u->captured;
-    else
-        board[m->to] = u->captured;
+    put(p, m->from);
+    if (u->captured)
+        put(u->captured, m->flags & F_EP ? m->to - (side == WHITE ? 16 : -16) : m->to);
     if (TYPE(p) == KING)
         kingsq[side] = m->from;
     if (m->flags & F_CASTLE) {
         r = m->to & 0x70;
-        if ((m->to & 7) == 6) {
-            board[r + 7] = board[r + 5];
-            board[r + 5] = 0;
-        } else {
-            board[r] = board[r + 3];
-            board[r + 3] = 0;
-        }
+        if ((m->to & 7) == 6)
+            put(take(r + 5), r + 7);
+        else
+            put(take(r + 3), r);
     }
     rights = u->rights;
     ep = u->ep;
@@ -462,129 +625,35 @@ static int push_legal(void)
 
 static int any_legal(void)
 {
-    int base = sp, n = push_legal();
+    int base = sp, i, found = 0;
 
+    generate(0);
+    for (i = base; i < sp && !found; i++)
+        if (make_legal(&stack[i])) {
+            unmake();
+            found = 1;
+        }
     sp = base;
-    return n;
+    return found;
 }
-
-/* Evaluation: material, and tables of where each piece is best, from
- * White's side, rank 8 first, so as they look on the board. */
-static const int value[7] = { 0, 100, 320, 330, 500, 900, 0 };
-
-static const signed char pst[7][64] = {
-    { 0 },
-    {   0,  0,  0,  0,  0,  0,  0,  0,      /* pawn */
-       50, 50, 50, 50, 50, 50, 50, 50,
-       10, 10, 20, 30, 30, 20, 10, 10,
-        5,  5, 10, 25, 25, 10,  5,  5,
-        0,  0,  0, 20, 20,  0,  0,  0,
-        5, -5,-10,  0,  0,-10, -5,  5,
-        5, 10, 10,-20,-20, 10, 10,  5,
-        0,  0,  0,  0,  0,  0,  0,  0 },
-    { -50,-40,-30,-30,-30,-30,-40,-50,      /* knight */
-      -40,-20,  0,  0,  0,  0,-20,-40,
-      -30,  0, 10, 15, 15, 10,  0,-30,
-      -30,  5, 15, 20, 20, 15,  5,-30,
-      -30,  0, 15, 20, 20, 15,  0,-30,
-      -30,  5, 10, 15, 15, 10,  5,-30,
-      -40,-20,  0,  5,  5,  0,-20,-40,
-      -50,-40,-30,-30,-30,-30,-40,-50 },
-    { -20,-10,-10,-10,-10,-10,-10,-20,      /* bishop */
-      -10,  0,  0,  0,  0,  0,  0,-10,
-      -10,  0,  5, 10, 10,  5,  0,-10,
-      -10,  5,  5, 10, 10,  5,  5,-10,
-      -10,  0, 10, 10, 10, 10,  0,-10,
-      -10, 10, 10, 10, 10, 10, 10,-10,
-      -10,  5,  0,  0,  0,  0,  5,-10,
-      -20,-10,-10,-10,-10,-10,-10,-20 },
-    {   0,  0,  0,  0,  0,  0,  0,  0,      /* rook */
-        5, 10, 10, 10, 10, 10, 10,  5,
-       -5,  0,  0,  0,  0,  0,  0, -5,
-       -5,  0,  0,  0,  0,  0,  0, -5,
-       -5,  0,  0,  0,  0,  0,  0, -5,
-       -5,  0,  0,  0,  0,  0,  0, -5,
-       -5,  0,  0,  0,  0,  0,  0, -5,
-        0,  0,  0,  5,  5,  0,  0,  0 },
-    { -20,-10,-10, -5, -5,-10,-10,-20,      /* queen */
-      -10,  0,  0,  0,  0,  0,  0,-10,
-      -10,  0,  5,  5,  5,  5,  0,-10,
-       -5,  0,  5,  5,  5,  5,  0, -5,
-        0,  0,  5,  5,  5,  5,  0, -5,
-      -10,  5,  5,  5,  5,  5,  0,-10,
-      -10,  0,  5,  0,  0,  0,  0,-10,
-      -20,-10,-10, -5, -5,-10,-10,-20 },
-    { -30,-40,-40,-50,-50,-40,-40,-30,      /* king, with pieces on the board */
-      -30,-40,-40,-50,-50,-40,-40,-30,
-      -30,-40,-40,-50,-50,-40,-40,-30,
-      -30,-40,-40,-50,-50,-40,-40,-30,
-      -20,-30,-30,-40,-40,-30,-30,-20,
-      -10,-20,-20,-20,-20,-20,-20,-10,
-       20, 20,  0,  0,  0,  0, 20, 20,
-       20, 30, 10,  0,  0, 10, 30, 20 },
-};
-
-static const signed char king_end[64] = {   /* king, in the endgame */
-    -50,-40,-30,-20,-20,-30,-40,-50,
-    -30,-20,-10,  0,  0,-10,-20,-30,
-    -30,-10, 20, 30, 30, 20,-10,-30,
-    -30,-10, 30, 40, 40, 30,-10,-30,
-    -30,-10, 30, 40, 40, 30,-10,-30,
-    -30,-10, 20, 30, 30, 20,-10,-30,
-    -30,-30,  0,  0,  0,  0,-30,-30,
-    -50,-30,-30,-30,-30,-30,-30,-50 };
-
-/* the table index for a square, for White, or for Black seen from its side */
-#define PST_W(sq) ((7 - ((sq) >> 4)) * 8 + ((sq) & 7))
-#define PST_B(sq) (((sq) >> 4) * 8 + ((sq) & 7))
 
 static int evaluate(void)
 {
-    int sq, p, t, score[2] = { 0, 0 }, pieces[2] = { 0, 0 }, bishops[2] = { 0, 0 }, c, i;
+    int c, sq, i, total[2], endgame = nonpawn[0] + nonpawn[1] <= 1300;
 
-    for (sq = 0; sq < 128; sq++) {
-        if (OFF(sq)) {
-            sq += 7;
-            continue;
-        }
-        if ((p = board[sq]) == 0)
-            continue;
-        t = TYPE(p);
-        c = COLOR(p) == BLACK;
-        i = c ? PST_B(sq) : PST_W(sq);
-        score[c] += value[t];
-        if (t != KING)
-            score[c] += pst[t][i];
-        if (t != PAWN && t != KING)
-            pieces[c] += value[t];
-        if (t == BISHOP)
-            bishops[c]++;
-    }
     for (c = 0; c < 2; c++) {
         sq = kingsq[c ? BLACK : WHITE];
         i = c ? PST_B(sq) : PST_W(sq);
-        score[c] += pieces[0] + pieces[1] <= 1300 ? king_end[i] : pst[KING][i];
-        if (bishops[c] >= 2)
-            score[c] += 30;
+        total[c] = material[c] + (endgame ? king_end[i] : pst[KING][i]) +
+                   (nbishops[c] >= 2 ? 30 : 0);
     }
-    return side == WHITE ? score[0] - score[1] : score[1] - score[0];
+    return side == WHITE ? total[0] - total[1] : total[1] - total[0];
 }
 
 /* Too little to mate with: kings, and at most one knight or bishop. */
 static int no_mating_material(void)
 {
-    int sq, minors = 0, t;
-
-    for (sq = 0; sq < 128; sq++) {
-        if (OFF(sq) || !board[sq])
-            continue;
-        t = TYPE(board[sq]);
-        if (t == PAWN || t == ROOK || t == QUEEN)
-            return 0;
-        if (t == KNIGHT || t == BISHOP)
-            minors++;
-    }
-    return minors <= 1;
+    return nmating == 0 && nminors <= 1;
 }
 
 /* How many times this position has been seen, back to the last capture or
@@ -612,14 +681,22 @@ typedef struct {
 static Entry __far *tt;
 
 /* Mate scores count from the root, so they're stored counting from here. */
-static int to_tt(int s, int ply) { return s > MATE - 100 ? s + ply : s < -MATE + 100 ? s - ply : s; }
-static int from_tt(int s, int ply) { return s > MATE - 100 ? s - ply : s < -MATE + 100 ? s + ply : s; }
+static int to_tt(int s, int ply)
+{
+    return s > MATE - 100 ? s + ply : s < -MATE + 100 ? s - ply : s;
+}
+
+static int from_tt(int s, int ply)
+{
+    return s > MATE - 100 ? s - ply : s < -MATE + 100 ? s + ply : s;
+}
 
 /* the search */
 static unsigned long nodes;
 static int stopped, max_depth, think_secs = 10;
 static time_t deadline;
 static Move pv[MAXPLY][MAXPLY];
+static Move root_best;              /* the last depth's best, searched first */
 static int pvlen[MAXPLY];
 static Move killer[MAXPLY][2];
 static int hist[2][7][64];          /* by side, the piece moved and where to */
@@ -627,12 +704,31 @@ static int hist[2][7][64];          /* by side, the piece moved and where to */
 #define SAME(a, b) ((a).from == (b).from && (a).to == (b).to && (a).promo == (b).promo)
 #define HIST(m) hist[side == BLACK][TYPE(board[(m).from])][SQ64((m).to)]
 
+static int ahead[16], nahead;       /* keys typed while it thinks */
+
 static void check_time(void)
 {
+    int k;
+
     if ((nodes & 255) != 0)
         return;
-    if ((deadline && time(NULL) >= deadline) || scr_pollkey() == KEY_CANCEL)
+    if (deadline && time(NULL) >= deadline)
         stopped = 1;
+    if ((k = scr_pollkey()) == KEY_CANCEL)
+        stopped = 1;
+    else if (k >= 0 && nahead < (int)(sizeof ahead / sizeof ahead[0]))
+        ahead[nahead++] = k;
+}
+
+static int get_key(void)
+{
+    int k;
+
+    if (nahead == 0)
+        return scr_getkey();
+    k = ahead[0];
+    memmove(ahead, ahead + 1, --nahead * sizeof ahead[0]);
+    return k;
 }
 
 /* Puts the best-looking move first: the hash table's, then captures of the
@@ -752,7 +848,7 @@ static int search(int alpha, int beta, int depth, int ply)
     base = sp;
     generate(0);
     top = sp;
-    order(base, top, e && e->key == hash ? &hashmove : NULL, ply);
+    order(base, top, ply == 0 ? &root_best : e && e->key == hash ? &hashmove : NULL, ply);
     for (i = base; i < top; i++) {
         m = pick(i, top);
         if (!make_legal(m))
@@ -866,8 +962,7 @@ static void draw_board(void)
 static void draw_moves(void)
 {
     char line[40];
-    int start = nundo & 1 ? 24 - side : side;   /* the side that moved first */
-    int bf = start == BLACK, lines = (nundo + bf + 1) / 2, first, i, w;
+    int bf = first_side() == BLACK, lines = (nundo + bf + 1) / 2, first, i, w;
 
     first = lines > LIST_LINES ? lines - LIST_LINES : 0;
     for (i = 0; i < LIST_LINES; i++) {
@@ -892,19 +987,22 @@ static void square_name(int sq, char *s)
 static void san(const Move __far *m, char *s)
 {
     static const char letters[] = "  NBRQK";
-    int base = sp, n, i, p = board[m->from], same_file = 0, same_rank = 0, ambiguous = 0;
+    int base = sp, i, p = board[m->from], same_file = 0, same_rank = 0, ambiguous = 0;
     const Move __far *o;
     char sq[3];
 
     if (m->flags & F_CASTLE) {
         strcpy(s, (m->to & 7) == 6 ? "O-O" : "O-O-O");
     } else {
-        n = push_legal();
         *s = 0;
         if (TYPE(p) != PAWN) {
-            for (i = 0; i < n; i++) {
-                o = &stack[base + i];
-                if (o->to == m->to && o->from != m->from && board[o->from] == p) {
+            /* another of the same pieces that can go there: only those need
+             * the check that they're legal */
+            generate(0);
+            for (i = base; i < sp; i++) {
+                o = &stack[i];
+                if (o->to == m->to && o->from != m->from && board[o->from] == p && make_legal(o)) {
+                    unmake();
                     ambiguous = 1;
                     if ((o->from & 7) == (m->from & 7))
                         same_file = 1;
@@ -947,7 +1045,7 @@ static void san(const Move __far *m, char *s)
 static int parse_move(const char *in, Move *out)
 {
     int base = sp, n, i, j;
-    char want[12], have[12], buf[12];
+    char want[12], have[12], buf[12], to[3];
     const Move __far *m;
     const char *b;
 
@@ -960,27 +1058,31 @@ static int parse_move(const char *in, Move *out)
     n = push_legal();
     for (i = 0; i < n; i++) {
         m = &stack[base + i];
+        /* as squares: e2e4, e7e8q, and e7e8 for a queen */
+        square_name(m->from, have);
+        square_name(m->to, have + 2);
+        have[4] = m->promo ? "  nbrq"[m->promo] : 0;
+        have[5] = 0;
+        if (strcmp(in, have) == 0 ||
+            (m->promo == QUEEN && strlen(in) == 4 && strncmp(in, have, 4) == 0))
+            break;
+        /* in SAN: writing a move out looks at the replies, which is slow on
+         * an 8086, so only the moves to the square typed are written */
+        square_name(m->to, to);
+        if (!(m->flags & F_CASTLE) && strstr(want, to) == NULL)
+            continue;
         san(m, buf);
         for (b = buf, j = 0; *b; b++)
             if (!strchr("x+#=-", *b))
                 have[j++] = *b;
         have[j] = 0;
-        if (strcmp(want, have) != 0) {
-            /* or as squares: e2e4, e7e8q, and e7e8 for a queen */
-            square_name(m->from, have);
-            square_name(m->to, have + 2);
-            have[4] = m->promo ? "  nbrq"[m->promo] : 0;
-            have[5] = 0;
-            if (strcmp(in, have) != 0 &&
-                !(m->promo == QUEEN && strlen(in) == 4 && strncmp(in, have, 4) == 0))
-                continue;
-        }
-        *out = *m;
-        sp = base;
-        return 0;
+        if (strcmp(want, have) == 0)
+            break;
     }
+    if (i < n)
+        *out = stack[base + i];
     sp = base;
-    return -1;
+    return i < n ? 0 : -1;
 }
 
 /* Whether the game is over, and if so, how, in s. */
@@ -1005,31 +1107,41 @@ static int game_over(char *s)
         strcpy(s, "A draw: neither side can mate");
         return 1;
     }
+    if (nundo >= GAME_MAX) {
+        sprintf(s, "A draw: %d moves are all this program can keep", GAME_MAX / 2);
+        return 1;
+    }
     return 0;
 }
 
 static void play(const Move *m)
 {
-    if (nundo < HISTORY - MAXPLY - 1) {
-        san(m, sanbuf[nundo]);
-        make(m);
-    }
+    san(m, sanbuf[nundo]);
+    make(m);
 }
 
+/* A score for the side to move, written for White: +1.00 is a pawn up for
+ * White, whoever is thinking. */
 static void show_score(int score, char *s)
 {
+    const char *us = side == WHITE ? "White" : "Black";
+    const char *them = side == WHITE ? "Black" : "White";
+
     if (score > MATE - 100)
-        sprintf(s, "mate in %d", (MATE - score + 1) / 2);
+        sprintf(s, "%s mates in %d", us, (MATE - score + 1) / 2);
     else if (score < -MATE + 100)
-        sprintf(s, "mated in %d", (MATE + score) / 2);
-    else
-        sprintf(s, "%+d.%02d", score / 100, abs(score) % 100);
+        sprintf(s, "%s mates in %d", them, (MATE + score) / 2);
+    else {
+        if (side == BLACK)
+            score = -score;
+        sprintf(s, "%c%d.%02d", score < 0 ? '-' : '+', abs(score) / 100, abs(score) % 100);
+    }
 }
 
 /* The computer's move; returns 0 if there's none. */
 static int think(Move *best)
 {
-    char info[100], sc[16], buf[8];
+    char info[100], sc[24], buf[8];
     time_t start = time(NULL);
     int depth, score, n, i, k;
 
@@ -1044,6 +1156,7 @@ static int think(Move *best)
     memset(killer, 0, sizeof killer);
     message(INFO_ROW, "Thinking... (CANCEL to move now)");
     for (depth = 1; depth <= (max_depth ? max_depth : MAXPLY - 4); depth++) {
+        root_best = *best;
         score = search(-INF, INF, depth, 0);
         /* stopped part way, pv holds the best of the moves it finished */
         if (pvlen[0] > 0)
@@ -1063,9 +1176,6 @@ static int think(Move *best)
         message(INFO_ROW, info);
         if (score > MATE - 100 || score < -MATE + 100 || n == 1)
             break;
-        /* another depth would take several times as long */
-        if (deadline && time(NULL) - start > think_secs / 3)
-            break;
     }
     return 1;
 }
@@ -1073,7 +1183,8 @@ static int think(Move *best)
 static void help(void)
 {
     message(MSG_ROW, "Moves: e4 Nf3 exd5 O-O e8=Q, or e2e4.  new  undo  switch  level N  depth N");
-    message(MSG_ROW + 1, "perft N  quit (or FINISH).  CANCEL while it thinks makes it move now.");
+    message(MSG_ROW + 1,
+            "fen  perft N  quit (or FINISH).  CANCEL while it thinks makes it move now.");
 }
 
 static int read_line(char *buf, int size)
@@ -1085,7 +1196,7 @@ static int read_line(char *buf, int size)
         message(PROMPT_ROW, side == WHITE ? "White's move: " : "Black's move: ");
         scr_puts(PROMPT_ROW, 15, buf);
         scr_cursor(PROMPT_ROW, 15 + n);
-        k = scr_getkey();
+        k = get_key();
         if (k == KEY_FINISH)
             return -1;
         if (k == KEY_RETURN || k == '\r')
@@ -1141,7 +1252,7 @@ static const char start_fen[] = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w K
 
 int main(int argc, char **argv)
 {
-    char line[40], s[80], fen[100];
+    char line[40], s[80], fen[100], *p;
     Move m;
     int c, i;
 
@@ -1189,6 +1300,7 @@ int main(int argc, char **argv)
         }
         if (read_line(line, sizeof line) < 0)
             break;
+        clear_row(PROMPT_ROW);
         message(MSG_ROW, "");
         clear_row(MSG_ROW + 1);
         if (line[0] == 0)
@@ -1224,6 +1336,14 @@ int main(int argc, char **argv)
             sprintf(s, max_depth ? "Searching %d moves ahead" : "Searching for %d seconds",
                     max_depth ? max_depth : think_secs);
             message(MSG_ROW, s);
+        } else if (strcmp(line, "fen") == 0) {
+            get_fen(fen);
+            /* the longest don't fit on a line: then the board, and the rest below */
+            if (strlen(fen) > SCR_COLS - 2 && (p = strchr(fen, ' ')) != NULL) {
+                *p++ = 0;
+                message(MSG_ROW + 1, p);
+            }
+            message(MSG_ROW, fen);
         } else if (strncmp(line, "perft ", 6) == 0) {
             i = atoi(line + 6);
             message(MSG_ROW, "Counting...");

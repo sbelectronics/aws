@@ -372,22 +372,37 @@ which is right for text.
 `games/` has two, each a full-screen program:
 - **`chess [-b] [-t seconds] [-d depth] ['position']`** plays you at chess, you as White,
   or Black with `-b`. Type moves as `e4`, `Nf3`, `exd5`, `O-O` and `e8=Q`, or as squares,
-  `e2e4`. It thinks for up to 10 seconds a move, or `-t`; `-d` searches a fixed number of
-  moves ahead instead. A position in FEN, in single quotes, sets up the board. At its prompt,
-  `new`, `undo`, `switch` (it takes your side), `level` and `depth` change the game, and
-  `perft N` counts the positions N moves ahead. The engine searches with alpha-beta and
-  iterative deepening, follows captures to the end, and keeps a table of positions it has
-  seen in far memory. It knows all the rules, en passant and underpromotion among them,
-  and draws by repetition and the fifty-move rule. Its move generator gives the standard
-  perft counts for the usual test positions. Black's pieces are shown in brackets: in the
-  AWS's font a `p` looks like a `P`.
+  `e2e4`; you can type the next one while it thinks. It thinks for up to 10 seconds a move,
+  or `-t`, and CANCEL makes it move at once; `-d` searches a fixed number of moves ahead
+  instead. On the AWS's 8086, 10 seconds is 3 or 4 moves ahead. A position in FEN, in single
+  quotes, sets up the board. At its prompt, `new`, `undo`, `switch` (it takes your side),
+  `level` and `depth` change the game, `fen` shows the position, to set up again later, and
+  `perft N` counts the positions N moves ahead. Scores are from White's side.
+
+  The engine searches with alpha-beta and iterative deepening, follows captures to the end,
+  and keeps a table of positions it has seen in far memory. It knows all the rules, en
+  passant and underpromotion among them, and draws by stalemate, repetition, the fifty-move
+  rule and too little material. A game longer than 187 moves is called a draw, as that's all
+  it keeps. Black's pieces are shown in brackets: in the AWS's font a `p` looks like a `P`.
 - **`patrol [-s seed] [-e]`** is a game of hunting raiders. You command the cutter Kestrel in
   the Reach, 8 by 8 zones of 8 by 8 sectors, and have to destroy every raider before the
   deadline. You `move` by compass heading and distance, fire the `lance`, whose energy is
   split among the raiders in the zone, or a `dart`, which aims itself, and keep up your
   `shields`, since the raiders close in and fire back. The `chart` shows what's known of the
-  zones around, `nav` gives the heading to a place, and docking next to a depot restocks and
-  mends the Kestrel. `-e` is easier; `-s` plays a given Reach again.
+  zones around, and where the depots are; `nav` gives the heading to a place; and docking
+  next to a depot restocks and mends the Kestrel. `-e` is easier, with fewer raiders, more
+  time and softer hits; `-s` plays a given Reach again.
+
+**How they were tested.** Natively, on Linux, with the sanitizers on, by harnesses that
+aren't in the repository:
+- **Chess** played several hundred games through its own screen and keyboard against random
+  moves typed in every notation, with `undo`, bad moves and `switch`. `python-chess` refereed
+  each one: every move legal and written right, the position the same after every move, and
+  every ending called. Its move generator gives the standard perft counts for the usual test
+  positions.
+- **Patrol** played thousands of games with a bot at the keyboard, with the game's state
+  checked before every command. A careful bot wins about three games in four, and more on
+  `-e`. Its games, replayed on the simulators, end exactly the same.
 
 ## Not done yet
 
@@ -427,9 +442,8 @@ screenshot in the `-k` directory. Here's what it does:
    - for `sertest` and `xmodem`, what went out of the serial port (`-serial`), with bytes
      sent in (`-serialin`).
 
-The tests:
-The programs are in `examples/`, and each is also an example of what it checks, apart from
-`hexedit`.
+The tests are below. The programs in `examples/` are each also an example of what they
+check.
 - **`selftest`** checks long arithmetic, 22 `printf` formats, `scanf`, `strtol`, the
   string functions, `qsort` and `bsearch`, `setjmp` and `longjmp`, `malloc`, the date
   conversions and `rand`. It prints each failure, then `selftest: 90 checks, 0 failed`.
@@ -476,7 +490,7 @@ The programs are in `examples/`, and each is also an example of what it checks, 
   `e5e6`. **`chessmate`** sets up a mate in two for the computer, plays `Kb8` for Black, and
   checks for `Kb6`, `Rh8#` and the checkmate.
 - **`patrol`** plays the Reach of seed 7: into a zone with a raider, shields up, a dart that
-  destroys it, and the chart.
+  destroys it, and the chart, with the depots on it from the start.
 
 `find`, `du` and `sysinfo` need the simulators' disks as they are: they look for the
 volumes' names and some of their files.
